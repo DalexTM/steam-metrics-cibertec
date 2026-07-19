@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Excluir la persistencia de las capas procesadas en local
+data/bronze/

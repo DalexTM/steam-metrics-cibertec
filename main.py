@@ -1,62 +1,55 @@
-import json
 import os
-import requests
-import time
+import subprocess
+import sys
 
-carpeta_destino = "steam-spy-json"
 
-if not os.path.exists(carpeta_destino):
-    os.makedirs(carpeta_destino)
-    print(f"Carpeta '{carpeta_destino}' creada con exito.")
+def ejecutar_script(subcarpeta, nombre_script):
+    ruta_script = os.path.join("src", subcarpeta, nombre_script)
 
-pagina_actual = 0
-cabeceras = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-}
+    if not os.path.exists(ruta_script):
+        print(f"\nError: El archivo '{ruta_script}' no existe.")
+        return
 
-print("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
-
-while True:
-    url = "https://steamspy.com/api.php"
-    parametros = {
-        "request": "all",
-        "page": str(pagina_actual)
-    }
-    
-    print(f"Solicitando pagina {pagina_actual}...")
+    print(f"\nIniciando ejecucion de: {ruta_script}\n")
     try:
-        response = requests.get(url, headers=cabeceras, params=parametros)
-        
-        if response.status_code != 200:
-            print(f"Error de conexion (Status {response.status_code}). Deteniendo el proceso.")
-            break
-            
-        try:
-            data = response.json()
-        except Exception as json_error:
-            print(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON.")
-            print(f"Texto recibido (primeros 150 caracteres): {response.text[:150]}")
-            break
-
-        if not data or (isinstance(data, dict) and "error" in data):
-            print(f"Se alcanzo el final de los datos en la pagina {pagina_actual}.")
-            break
-            
-        nombre_archivo = f"page_{pagina_actual}.json"
-        ruta_completa = os.path.join(carpeta_destino, nombre_archivo)
-        
-        with open(ruta_completa, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-            
-        print(f"Archivo '{ruta_completa}' guardado exitosamente.")
-        
-        pagina_actual += 1
-        
-        print("Esperando 65 segundos para cumplir con la politica de SteamSpy...")
-        time.sleep(65)
-        
+        subprocess.run([sys.executable, ruta_script], check=True)
+        print(f"\nEjecucion de {nombre_script} finalizada con exito.")
+    except subprocess.CalledProcessError:
+        print(f"\nError: El script {nombre_script} termino con errores.")
     except Exception as e:
-        print(f"Error inesperado en el proceso: {e}")
-        break
+        print(f"\nError inesperado al ejecutar {nombre_script}: {e}")
 
-print("Proceso de descarga finalizado.")
+
+def mostrar_menu():
+    while True:
+        print("\n============================================")
+        print("    SISTEMA DE METRICAS STEAM - CIBERTEC")
+        print("============================================")
+        print("1. Descargar JSONs desde SteamSpy")
+        print("2. Transformar JSONs de SteamSpy a formato Parquet")
+        print("3. Transformar dataset de Metacritic a formato Parquet")
+        print("4.")
+        print("0. Salir")
+        print("============================================")
+
+        opcion = input("Seleccione una opcion: ").strip()
+
+        if opcion == "1":
+            ejecutar_script("bronze", "ingest_steamspy.py")
+        elif opcion == "2":
+            ejecutar_script("bronze", "transform_steamspy_parquet.py")
+        elif opcion == "3":
+            ejecutar_script("bronze", "transform_metacritic_parquet.py")
+        elif opcion == "4":
+            print("")
+        elif opcion == "0":
+            print("\nSaliendo del programa.")
+            break
+        else:
+            print("\nOpcion no valida. Intente de nuevo.")
+
+        input("\nPresione Enter para continuar...")
+
+
+if __name__ == "__main__":
+    mostrar_menu()
