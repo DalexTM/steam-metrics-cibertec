@@ -10,3 +10,6 @@ dependencies = [
     "pyarrow>=25.0.0",
     "requests>=2.34.2",
 ]
+
+[tool.pyright]
+extraPaths = ["."]

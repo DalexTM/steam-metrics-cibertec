@@ -23,6 +23,28 @@ DIRECTORIO_SALIDA = os.path.join("data", "bronze")
 def tamanio_kb(ruta: str) -> float:
     return os.path.getsize(ruta) / 1024
 
+def formatear_columnas(df):
+
+    df["appid"] = pd.to_numeric(df["appid"], errors="coerce").fillna(0).astype("int64")
+    df["name"] = df["name"].astype(str)
+    df["developer"] = df["developer"].astype(str)
+    df["publisher"] = df["publisher"].astype(str)
+    df["score_rank"] = df["score_rank"].astype(str)
+    df["positive"] = pd.to_numeric(df["positive"], errors="coerce").fillna(0).astype("int32")
+    df["negative"] = pd.to_numeric(df["negative"], errors="coerce").fillna(0).astype("int32")
+    df["userscore"] = pd.to_numeric(df["userscore"], errors="coerce").fillna(0).astype("int32")
+    df["owners"] = df["owners"].astype(str)
+    df["average_forever"] = pd.to_numeric(df["average_forever"], errors="coerce").fillna(0).astype("int32")
+    df["average_2weeks"] = pd.to_numeric(df["average_2weeks"], errors="coerce").fillna(0).astype("int32")
+    df["median_forever"] = pd.to_numeric(df["median_forever"], errors="coerce").fillna(0).astype("int32")
+    df["median_2weeks"] = pd.to_numeric(df["median_2weeks"], errors="coerce").fillna(0).astype("int32")
+    df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0.0).astype("float32")
+    df["initialprice"] = pd.to_numeric(df["initialprice"], errors="coerce").fillna(0.0).astype("float32")
+    df["discount"] = pd.to_numeric(df["discount"], errors="coerce").fillna(0).astype("int32")
+    df["ccu"] = pd.to_numeric(df["ccu"], errors="coerce").fillna(0).astype("int32")
+
+    return df
+
 def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
     ruta = os.path.join(DIRECTORIO_SALIDA, f"{nombre}.parquet")
 
@@ -48,30 +70,14 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
         ]
     )
 
-    df["appid"] = pd.to_numeric(df["appid"], errors="coerce").fillna(0).astype("int64")
-    df["name"] = df["name"].astype(str)
-    df["developer"] = df["developer"].astype(str)
-    df["publisher"] = df["publisher"].astype(str)
-    df["score_rank"] = df["score_rank"].astype(str)
-    df["positive"] = pd.to_numeric(df["positive"], errors="coerce").fillna(0).astype("int32")
-    df["negative"] = pd.to_numeric(df["negative"], errors="coerce").fillna(0).astype("int32")
-    df["userscore"] = pd.to_numeric(df["userscore"], errors="coerce").fillna(0).astype("int32")
-    df["owners"] = df["owners"].astype(str)
-    df["average_forever"] = pd.to_numeric(df["average_forever"], errors="coerce").fillna(0).astype("int32")
-    df["average_2weeks"] = pd.to_numeric(df["average_2weeks"], errors="coerce").fillna(0).astype("int32")
-    df["median_forever"] = pd.to_numeric(df["median_forever"], errors="coerce").fillna(0).astype("int32")
-    df["median_2weeks"] = pd.to_numeric(df["median_2weeks"], errors="coerce").fillna(0).astype("int32")
-    df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0.0).astype("float32")
-    df["initialprice"] = pd.to_numeric(df["initialprice"], errors="coerce").fillna(0.0).astype("float32")
-    df["discount"] = pd.to_numeric(df["discount"], errors="coerce").fillna(0).astype("int32")
-    df["ccu"] = pd.to_numeric(df["ccu"], errors="coerce").fillna(0).astype("int32")
+    df=formatear_columnas(df)
 
     tabla = pa.Table.from_pandas(df, schema=esquema_steamspy, preserve_index=False)
     pq.write_table(tabla, ruta, compression="snappy")
     logging.info(f"Guardado: {ruta} ({tamanio_kb(ruta):.2f} KB)")
     return ruta
 
-def consolidar_jsons_a_parquet():
+def procesar_json_a_parquet():
     archivos = [f for f in os.listdir(DIRECTORIO_ENTRADA) if f.endswith(".json")]
 
     if not archivos:
@@ -88,12 +94,8 @@ def consolidar_jsons_a_parquet():
                 contenido_json = json.load(f)
 
             df_pagina = pd.DataFrame(contenido_json).T
-            df_pagina = df_pagina.reset_index().rename(columns={"index": "appid_raw"})
-            
-            if "appid" in df_pagina.columns:
-                df_pagina = df_pagina.drop(columns=["appid"])
-            
-            df_pagina = df_pagina.rename(columns={"appid_raw": "appid"})
+            df_pagina = df_pagina.reset_index(drop=True)
+
             dataframes_acumulados.append(df_pagina)
         except Exception as e:
             logging.error(f"Error al procesar el archivo {archivo}: {e}")
@@ -107,4 +109,4 @@ def consolidar_jsons_a_parquet():
         logging.warning("No se pudo estructurar ninguna informacion.")
 
 if __name__ == "__main__":
-    consolidar_jsons_a_parquet()
+    procesar_json_a_parquet()
