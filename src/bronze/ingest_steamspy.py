@@ -16,14 +16,13 @@ logging.basicConfig(
     ]
 )
 
-carpeta_destino = os.path.join("data", "raw", "steamspy")
-pagina_actual = 0
-cabeceras = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-}
-
-
 def ingesta_datos_steamspy():
+
+    carpeta_destino = os.path.join("data", "raw", "steamspy")
+    pagina_actual = 0
+    cabeceras = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
 
     logging.info("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
 
