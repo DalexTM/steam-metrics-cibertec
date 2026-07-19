@@ -1,24 +1,62 @@
-import pandas as pd
+import json
+import os
 import requests
+import time
 
-# 1. Ingesta de SteamSpy (Capa Bronze)
-# Obtienes la lista de juegos más populares o los específicos de estrategia
-url_spy = "https://steamspy.com/api.php?request=all" 
-data_spy = requests.get(url_spy).json()
-df_spy = pd.DataFrame(data_spy).T # Transponer porque viene indexado por ID
+carpeta_destino = "steam-spy-json"
 
-df_spy.to_csv("bronze_steamspy.csv", index=False)
+if not os.path.exists(carpeta_destino):
+    os.makedirs(carpeta_destino)
+    print(f"Carpeta '{carpeta_destino}' creada con exito.")
 
+pagina_actual = 0
+cabeceras = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
 
-# 2. Ingesta de RAWG (Capa Bronze)
-# Solicitas los detalles del juego en RAWG usando el id de Steam para traer Metacritic y Tags
-# (Nota: RAWG te permite filtrar directamente por su endpoint de juegos)
-url_rawg = "https://api.rawg.io/api/games?key=f5e423f2920b4ee396e250ddcf40ccce&platforms=4" # 4 es el ID de PC/Steam
-data_rawg = requests.get(url_rawg).json()
-df_rawg = pd.DataFrame(data_rawg['results'])
+print("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
 
-df_rawg.to_csv("bronze_rawg.csv", index=False)
+while True:
+    url = "https://steamspy.com/api.php"
+    parametros = {
+        "request": "all",
+        "page": str(pagina_actual)
+    }
+    
+    print(f"Solicitando pagina {pagina_actual}...")
+    try:
+        response = requests.get(url, headers=cabeceras, params=parametros)
+        
+        if response.status_code != 200:
+            print(f"Error de conexion (Status {response.status_code}). Deteniendo el proceso.")
+            break
+            
+        try:
+            data = response.json()
+        except Exception as json_error:
+            print(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON.")
+            print(f"Texto recibido (primeros 150 caracteres): {response.text[:150]}")
+            break
 
-# 3. Cruzar la información (Hacia la Capa Silver)
-# Unes ambas tablas usando el ID de Steam para consolidar la base de datos
-# df_final = pd.merge(df_spy, df_rawg, left_on='appid', right_on='id_or_external_id')
+        if not data or (isinstance(data, dict) and "error" in data):
+            print(f"Se alcanzo el final de los datos en la pagina {pagina_actual}.")
+            break
+            
+        nombre_archivo = f"page_{pagina_actual}.json"
+        ruta_completa = os.path.join(carpeta_destino, nombre_archivo)
+        
+        with open(ruta_completa, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+            
+        print(f"Archivo '{ruta_completa}' guardado exitosamente.")
+        
+        pagina_actual += 1
+        
+        print("Esperando 65 segundos para cumplir con la politica de SteamSpy...")
+        time.sleep(65)
+        
+    except Exception as e:
+        print(f"Error inesperado en el proceso: {e}")
+        break
+
+print("Proceso de descarga finalizado.")
