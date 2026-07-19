@@ -71,7 +71,7 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
     logging.info(f"Guardado: {ruta} ({tamanio_kb(ruta):.2f} KB)")
     return ruta
 
-def consolidar_jsons_a_parquet():
+def procesar_a_parquet():
     archivos = [f for f in os.listdir(DIRECTORIO_ENTRADA) if f.endswith(".json")]
 
     if not archivos:
@@ -107,4 +107,4 @@ def consolidar_jsons_a_parquet():
         logging.warning("No se pudo estructurar ninguna informacion.")
 
 if __name__ == "__main__":
-    consolidar_jsons_a_parquet()
+    procesar_a_parquet()
