@@ -1,23 +1,30 @@
 import os
 import subprocess
 import sys
+import logging
 
+carpeta_logs = "logs"
+ruta_log = os.path.join(carpeta_logs, "main.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(ruta_log, encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
 
 def ejecutar_script(subcarpeta, nombre_script):
     ruta_script = os.path.join("src", subcarpeta, nombre_script)
-
-    if not os.path.exists(ruta_script):
-        print(f"\nError: El archivo '{ruta_script}' no existe.")
-        return
-
-    print(f"\nIniciando ejecucion de: {ruta_script}\n")
+    logging.info(f"Iniciando ejecucion de: {ruta_script}")
     try:
         subprocess.run([sys.executable, ruta_script], check=True)
-        print(f"\nEjecucion de {nombre_script} finalizada con exito.")
+        logging.info(f"Ejecucion de {nombre_script} finalizada con exito.")
     except subprocess.CalledProcessError:
-        print(f"\nError: El script {nombre_script} termino con errores.")
+        logging.error(f"El script {nombre_script} termino con errores.")
     except Exception as e:
-        print(f"\nError inesperado al ejecutar {nombre_script}: {e}")
+        logging.error(f"Error inesperado al ejecutar {nombre_script}: {e}")
 
 
 def mostrar_menu():
@@ -26,9 +33,9 @@ def mostrar_menu():
         print("    SISTEMA DE METRICAS STEAM - CIBERTEC")
         print("============================================")
         print("1. Descargar JSONs desde SteamSpy")
-        print("2. Transformar JSONs de SteamSpy a formato Parquet")
-        print("3. Transformar dataset de Metacritic a formato Parquet")
-        print("4.")
+        print("2. Transformar SteamSpy JSONs a Parquet")
+        print("3. Transformar Metacritic Excel a Parquet")
+        print("4. ")
         print("0. Salir")
         print("============================================")
 
@@ -41,12 +48,12 @@ def mostrar_menu():
         elif opcion == "3":
             ejecutar_script("bronze", "transform_metacritic_parquet.py")
         elif opcion == "4":
-            print("")
+            logging.warning("")
         elif opcion == "0":
-            print("\nSaliendo del programa.")
+            logging.info("Saliendo del programa.")
             break
         else:
-            print("\nOpcion no valida. Intente de nuevo.")
+            logging.warning("Opcion no valida. Intente de nuevo.")
 
         input("\nPresione Enter para continuar...")
 
