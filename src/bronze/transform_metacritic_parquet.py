@@ -40,10 +40,38 @@ def generar_score_sintetico(row):
     else:
         return random.randint(40, 65)
 
+def formatear_columnas(df):
+
+    df["Peak_CCU"] = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype("int64")
+    df["Metacritic_score"] = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype("int32")
+    df["Metacritic_score"] = df.apply(generar_score_sintetico, axis=1)
+    mapa_bool = {"VERDADERO": True, "FALSO": False, True: True, False: False, "TRUE": True, "FALSE": False}
+    df["Windows"] = df["Windows"].astype(str).str.upper().map(mapa_bool).fillna(False)
+    df["Mac"] = df["Mac"].astype(str).str.upper().map(mapa_bool).fillna(False)
+    df["Linux"] = df["Linux"].astype(str).str.upper().map(mapa_bool).fillna(False)
+    df["AppID"] = pd.to_numeric(df["AppID"], errors="coerce").fillna(0).astype("int64")
+    df["Name"] = df["Name"].astype(str).fillna("")
+    df["Release_date"] = df["Release_date"].astype(str).fillna("")
+    df["Required_age"] = pd.to_numeric(df["Required_age"], errors="coerce").fillna(0).astype("int32")
+    df["About_the_game"] = df["About_the_game"].astype(str).fillna("")
+    df["Supported_languages"] = df["Supported_languages"].astype(str).fillna("")
+    df["Full_audio_languages"] = df["Full_audio_languages"].astype(str).fillna("")
+    df["Reviews"] = df["Reviews"].astype(str).fillna("")
+    df["Website"] = df["Website"].astype(str).fillna("")
+    df["Recommendations"] = pd.to_numeric(df["Recommendations"], errors="coerce").fillna(0).astype("int64")
+    df["Average_playtime_forever"] = pd.to_numeric(df["Average_playtime_forever"], errors="coerce").fillna(0).astype("int32")
+    df["Average_playtime_two_weeks"] = pd.to_numeric(df["Average_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
+    df["Median_playtime_forever"] = pd.to_numeric(df["Median_playtime_forever"], errors="coerce").fillna(0).astype("int32")
+    df["Median_playtime_two_weeks"] = pd.to_numeric(df["Median_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
+    df["Categories"] = df["Categories"].astype(str).fillna("")
+    df["Genres"] = df["Genres"].astype(str).fillna("")
+
+    return df
+
 def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
     ruta = os.path.join(DIRECTORIO_SALIDA, f"{nombre}.parquet")
 
-    esquema_kaggle = pa.schema(
+    esquema_metacritic = pa.schema(
         [
             ("AppID", pa.int64()),
             ("Name", pa.string()),
@@ -69,47 +97,20 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
         ]
     )
 
-    tabla = pa.Table.from_pandas(df, schema=esquema_kaggle, preserve_index=False)
+    tabla = pa.Table.from_pandas(df, schema=esquema_metacritic, preserve_index=False)
     pq.write_table(tabla, ruta, compression="snappy")
     logging.info(f"Guardado: {ruta} ({tamano_kb(ruta):.2f} KB)")
     return ruta
 
-def procesar_a_parquet():
+def procesar_excel_a_parquet():
     ruta_excel = os.path.join(DIRECTORIO_ENTRADA, NOMBRE_EXCEL)
     logging.info(f"Leyendo dataset de Excel: {ruta_excel}...")
     
     df = pd.read_excel(ruta_excel)
     df.columns = df.columns.str.replace(" ", "_")
-
-    df["Peak_CCU"] = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype("int64")
-    df["Metacritic_score"] = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype("int32")
-
-    logging.info("Generando puntuaciones sinteticas de Metacritic basadas en el Peak CCU...")
-    df["Metacritic_score"] = df.apply(generar_score_sintetico, axis=1)
-
-    mapa_bool = {"VERDADERO": True, "FALSO": False, True: True, False: False, "TRUE": True, "FALSE": False}
-    df["Windows"] = df["Windows"].astype(str).str.upper().map(mapa_bool).fillna(False)
-    df["Mac"] = df["Mac"].astype(str).str.upper().map(mapa_bool).fillna(False)
-    df["Linux"] = df["Linux"].astype(str).str.upper().map(mapa_bool).fillna(False)
-
-    df["AppID"] = pd.to_numeric(df["AppID"], errors="coerce").fillna(0).astype("int64")
-    df["Name"] = df["Name"].astype(str).fillna("")
-    df["Release_date"] = df["Release_date"].astype(str).fillna("")
-    df["Required_age"] = pd.to_numeric(df["Required_age"], errors="coerce").fillna(0).astype("int32")
-    df["About_the_game"] = df["About_the_game"].astype(str).fillna("")
-    df["Supported_languages"] = df["Supported_languages"].astype(str).fillna("")
-    df["Full_audio_languages"] = df["Full_audio_languages"].astype(str).fillna("")
-    df["Reviews"] = df["Reviews"].astype(str).fillna("")
-    df["Website"] = df["Website"].astype(str).fillna("")
-    df["Recommendations"] = pd.to_numeric(df["Recommendations"], errors="coerce").fillna(0).astype("int64")
-    df["Average_playtime_forever"] = pd.to_numeric(df["Average_playtime_forever"], errors="coerce").fillna(0).astype("int32")
-    df["Average_playtime_two_weeks"] = pd.to_numeric(df["Average_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
-    df["Median_playtime_forever"] = pd.to_numeric(df["Median_playtime_forever"], errors="coerce").fillna(0).astype("int32")
-    df["Median_playtime_two_weeks"] = pd.to_numeric(df["Median_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
-    df["Categories"] = df["Categories"].astype(str).fillna("")
-    df["Genres"] = df["Genres"].astype(str).fillna("")
-
+    df=formatear_columnas(df)
+    
     guardar_parquet(df, "bronze_metacritic")
 
 if __name__ == "__main__":
-    procesar_a_parquet()
+    procesar_excel_a_parquet()
