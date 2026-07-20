@@ -2,7 +2,7 @@ import os
 import logging
 from src.bronze.ingest_steamspy import ingesta_datos_steamspy
 from src.bronze.transform_steamspy_parquet import procesar_json_a_parquet
-from src.bronze.transform_metacritic_parquet import procesar_excel_a_parquet
+from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
 
 carpeta_logs = "logs"
 ruta_log = os.path.join(carpeta_logs, "main.log")
@@ -23,7 +23,7 @@ def mostrar_menu():
         print("============================================")
         print("1. Descargar JSONs desde SteamSpy")
         print("2. Transformar SteamSpy JSONs a Parquet")
-        print("3. Transformar Metacritic Excel a Parquet")
+        print("3. Transformar Metacritic CSV a Parquet")
         print("0. Salir")
         print("============================================")
 
@@ -36,14 +36,14 @@ def mostrar_menu():
                 logging.info("Pipeline finalizado: Descarga desde SteamSpy API completada.")
                 
             elif opcion == "2":
-                logging.info("Iniciando pipeline nativo: Consolidación de JSONs a Parquet...")
+                logging.info("Iniciando pipeline nativo: Consolidación de SteamSpy JSONs a Parquet...")
                 procesar_json_a_parquet()
                 logging.info("Pipeline finalizado: Consolidación a Parquet completada con éxito.")
                 
             elif opcion == "3":
-                logging.info("Iniciando pipeline nativo: Transformación de Metacritic Excel a Parquet...")
-                procesar_excel_a_parquet()
-                logging.info("Pipeline finalizado: Transformación de dataset Metacritic completada con éxito.")
+                logging.info("Iniciando pipeline nativo: Transformación de Metacritic CSV a Parquet...")
+                procesar_csv_a_parquet()
+                logging.info("Pipeline finalizado: Transformación de dataset completada con éxito.")
                 
             elif opcion == "0":
                 logging.info("Saliendo del orquestador principal del programa.")

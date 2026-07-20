@@ -4516,9 +4516,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "99",
+        "price": "499",
         "initialprice": "499",
-        "discount": "80",
+        "discount": "0",
         "ccu": 0
     },
     "211820": {
@@ -10558,9 +10558,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "1529",
+        "price": "4499",
         "initialprice": "4499",
-        "discount": "66",
+        "discount": "0",
         "ccu": 1422
     },
     "1643320": {
@@ -10577,9 +10577,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "4199",
+        "price": "5999",
         "initialprice": "5999",
-        "discount": "30",
+        "discount": "0",
         "ccu": 2403
     },
     "204450": {
@@ -11204,9 +11204,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "299",
+        "price": "1999",
         "initialprice": "1999",
-        "discount": "85",
+        "discount": "0",
         "ccu": 198
     },
     "975370": {
@@ -11983,9 +11983,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "89",
+        "price": "99",
         "initialprice": "99",
-        "discount": "10",
+        "discount": "0",
         "ccu": 0
     },
     "424280": {
@@ -12268,9 +12268,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "124",
+        "price": "499",
         "initialprice": "499",
-        "discount": "75",
+        "discount": "0",
         "ccu": 11
     },
     "389430": {
@@ -13009,9 +13009,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "809",
+        "price": "2999",
         "initialprice": "2999",
-        "discount": "73",
+        "discount": "0",
         "ccu": 204
     },
     "246620": {
@@ -13864,9 +13864,9 @@
         "average_2weeks": 0,
         "median_forever": 0,
         "median_2weeks": 0,
-        "price": "374",
+        "price": "2499",
         "initialprice": "2499",
-        "discount": "85",
+        "discount": "0",
         "ccu": 234
     },
     "40990": {
@@ -16057,7 +16057,7 @@
     "65790": {
         "appid": 65790,
         "name": "Arma: Cold War Assault Remastered",
-        "developer": "Bohemia Interactive",
+        "developer": "Bohemia Interactive, Josef Šimánek (retro)",
         "publisher": "Bohemia Interactive",
         "score_rank": "",
         "positive": 4857,

@@ -19,7 +19,7 @@ logging.basicConfig(
 
 DIRECTORIO_ENTRADA = os.path.join("data", "raw", "metacritic")
 DIRECTORIO_SALIDA = os.path.join("data", "bronze")
-NOMBRE_EXCEL = "metacritic.xlsx"
+NOMBRE_DATASET = "metacritic.csv"
 
 def tamano_kb(ruta: str) -> float:
     return os.path.getsize(ruta) / 1024
@@ -41,14 +41,22 @@ def generar_score_sintetico(row):
         return random.randint(40, 65)
 
 def formatear_columnas(df):
-
+    logging.info("Iniciando formateo y tipado de datos...")
+    
+    logging.info("Normalizando metricas numericas principales...")
     df["Peak_CCU"] = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype("int64")
     df["Metacritic_score"] = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype("int32")
+    
+    logging.info("Generando scores sinteticos basados en Peak_CCU...")
     df["Metacritic_score"] = df.apply(generar_score_sintetico, axis=1)
+    
+    logging.info("Mapeando valores booleanos de compatibilidad de SO...")
     mapa_bool = {"VERDADERO": True, "FALSO": False, True: True, False: False, "TRUE": True, "FALSE": False}
     df["Windows"] = df["Windows"].astype(str).str.upper().map(mapa_bool).fillna(False)
     df["Mac"] = df["Mac"].astype(str).str.upper().map(mapa_bool).fillna(False)
     df["Linux"] = df["Linux"].astype(str).str.upper().map(mapa_bool).fillna(False)
+    
+    logging.info("Estandarizando metadatos y variables secundarias...")
     df["AppID"] = pd.to_numeric(df["AppID"], errors="coerce").fillna(0).astype("int64")
     df["Name"] = df["Name"].astype(str).fillna("")
     df["Release_date"] = df["Release_date"].astype(str).fillna("")
@@ -66,10 +74,12 @@ def formatear_columnas(df):
     df["Categories"] = df["Categories"].astype(str).fillna("")
     df["Genres"] = df["Genres"].astype(str).fillna("")
 
+    logging.info("Formateo de columnas finalizado con exito.")
     return df
 
 def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
     ruta = os.path.join(DIRECTORIO_SALIDA, f"{nombre}.parquet")
+    logging.info(f"Definiendo esquema PyArrow para {nombre}.parquet...")
 
     esquema_metacritic = pa.schema(
         [
@@ -97,20 +107,28 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
         ]
     )
 
+    logging.info("Convirtiendo DataFrame a tabla PyArrow...")
     tabla = pa.Table.from_pandas(df, schema=esquema_metacritic, preserve_index=False)
+    
+    logging.info("Escribiendo archivo Parquet en disco...")
     pq.write_table(tabla, ruta, compression="snappy")
-    logging.info(f"Guardado: {ruta} ({tamano_kb(ruta):.2f} KB)")
+    logging.info(f"Guardado exitoso: {ruta} ({tamano_kb(ruta):.2f} KB)")
     return ruta
 
-def procesar_excel_a_parquet():
-    ruta_excel = os.path.join(DIRECTORIO_ENTRADA, NOMBRE_EXCEL)
-    logging.info(f"Leyendo dataset de Excel: {ruta_excel}...")
+def procesar_csv_a_parquet():
+    ruta_dataset = os.path.join(DIRECTORIO_ENTRADA, NOMBRE_DATASET)
+    logging.info(f"Iniciando lectura del dataset: {ruta_dataset}")
     
-    df = pd.read_excel(ruta_excel)
+    df = pd.read_csv(ruta_dataset, encoding="utf-8", low_memory=False)
+    logging.info(f"Dataset cargado correctamente. Registros encontrados: {len(df)}")
+    
+    logging.info("Normalizando nombres de cabeceras...")
     df.columns = df.columns.str.replace(" ", "_")
-    df=formatear_columnas(df)
     
+    df = formatear_columnas(df)
     guardar_parquet(df, "bronze_metacritic")
+    
+    logging.info("Procesamiento de Metacritic a Parquet finalizado con exito.")
 
 if __name__ == "__main__":
-    procesar_excel_a_parquet()
+    procesar_csv_a_parquet()
