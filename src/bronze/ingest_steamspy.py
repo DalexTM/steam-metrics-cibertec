@@ -7,14 +7,16 @@ import logging
 carpeta_logs = "logs"
 ruta_log = os.path.join(carpeta_logs, "ingest_steamspy.log")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(ruta_log, encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger("ingest_steamspy")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    fh = logging.FileHandler(ruta_log, encoding="utf-8")
+    fh.setFormatter(formatter)
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
 
 def ingesta_datos_steamspy():
 
@@ -24,47 +26,50 @@ def ingesta_datos_steamspy():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
-    logging.info("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
+    logger.info("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
 
-    while True:
-        url = "https://steamspy.com/api.php"
-        parametros = {"request": "all", "page": str(pagina_actual)}
+    try:
+        while True:
+            url = "https://steamspy.com/api.php"
+            parametros = {"request": "all", "page": str(pagina_actual)}
 
-        logging.info(f"Solicitando pagina {pagina_actual}...")
-        try:
-            response = requests.get(url, headers=cabeceras, params=parametros)
-
-            if response.status_code != 200:
-                logging.error(f"Error de conexion (Status {response.status_code}). Deteniendo el proceso.")
-                break
-
+            logger.info(f"Solicitando pagina {pagina_actual}...")
             try:
-                data = response.json()
-            except Exception as json_error:
-                logging.error(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON.")
+                response = requests.get(url, headers=cabeceras, params=parametros)
+
+                if response.status_code != 200:
+                    logger.error(f"Error de conexion (Status {response.status_code}). Deteniendo el proceso.")
+                    break
+
+                try:
+                    data = response.json()
+                except Exception as json_error:
+                    logger.error(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON.")
+                    break
+
+                if not data or (isinstance(data, dict) and "error" in data):
+                    logger.info(f"Se alcanzo el final de los datos en la pagina {pagina_actual}.")
+                    break
+
+                nombre_archivo = f"page_{pagina_actual}.json"
+                ruta_completa = os.path.join(carpeta_destino, nombre_archivo)
+
+                with open(ruta_completa, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+
+                logger.info(f"Archivo '{ruta_completa}' guardado exitosamente.")
+                pagina_actual += 1
+
+                logger.info("Esperando 60 segundos para cumplir con la politica de SteamSpy...")
+                time.sleep(60)
+
+            except Exception as e:
+                logger.error(f"Error inesperado en el proceso: {e}")
                 break
+    except KeyboardInterrupt:
+        logger.warning("Proceso de descarga cancelado por el usuario (Ctrl + C).")
 
-            if not data or (isinstance(data, dict) and "error" in data):
-                logging.info(f"Se alcanzo el final de los datos en la pagina {pagina_actual}.")
-                break
-
-            nombre_archivo = f"page_{pagina_actual}.json"
-            ruta_completa = os.path.join(carpeta_destino, nombre_archivo)
-
-            with open(ruta_completa, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-
-            logging.info(f"Archivo '{ruta_completa}' guardado exitosamente.")
-            pagina_actual += 1
-
-            logging.info("Esperando 60 segundos para cumplir con la politica de SteamSpy...")
-            time.sleep(60)
-
-        except Exception as e:
-            logging.error(f"Error inesperado en el proceso: {e}")
-            break
-
-    logging.info("Proceso de descarga finalizado.")
+    logger.info("Proceso de descarga finalizado.")
 
 if __name__ == "__main__":
     ingesta_datos_steamspy()
