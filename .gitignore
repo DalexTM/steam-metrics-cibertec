@@ -219,3 +219,4 @@ __marimo__/
 
 # Excluir la persistencia de las capas procesadas en local
 data/bronze/*.parquet
+data/raw/metacritic/*.csv
