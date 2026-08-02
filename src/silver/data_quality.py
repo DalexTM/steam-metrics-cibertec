@@ -1,88 +1,92 @@
 import pandas as pd
+from profile_parquet import profile_parquet
 
-# 1. Cargar datos Bronze
+print("=" * 70)
+print("VALIDACIÓN DE CALIDAD - BRONZE")
+print("=" * 70)
+
+# ------------------------------------------------------------------
+# 1. Perfil de los datasets Bronze
+# ------------------------------------------------------------------
+profile_parquet("data/bronze/bronze_metacritic.parquet")
+profile_parquet("data/bronze/bronze_steamspy.parquet")
+
+# ------------------------------------------------------------------
+# 2. Cargar datos Bronze
+# ------------------------------------------------------------------
 metacritic = pd.read_parquet("data/bronze/bronze_metacritic.parquet")
 steamspy = pd.read_parquet("data/bronze/bronze_steamspy.parquet")
 
-# 2. Estandarizar nombres de columnas
+# ------------------------------------------------------------------
+# 3. Estandarizar nombres de columnas
+# ------------------------------------------------------------------
 metacritic = metacritic.rename(columns={
     "AppID": "appid",
     "Name": "name"
 })
 
-# 3. Validar la llave de integración
-print("Tipo de dato AppID:")
-print(metacritic["appid"].dtype)
-print(steamspy["appid"].dtype)
+print("=" * 70)
+# ------------------------------------------------------------------
+# 4. Validación de la llave de integración
+# ------------------------------------------------------------------
+print("\n=== Validación de AppID ===")
 
-# Cantidad de AppID únicos
+print("Tipo de dato:")
+print("Metacritic:", metacritic["appid"].dtype)
+print("SteamSpy  :", steamspy["appid"].dtype)
+
+print("\nAppID únicos:")
 print("Metacritic:", metacritic["appid"].nunique())
-print("SteamSpy:", steamspy["appid"].nunique())
+print("SteamSpy  :", steamspy["appid"].nunique())
 
-# Verificar cuantos juegos tienen en común
 coincidencias = set(metacritic["appid"]) & set(steamspy["appid"])
 
-print(f"Metacritic: {len(metacritic):,} juegos")
-print(f"SteamSpy: {len(steamspy):,} juegos")
-print(f"Juegos en común: {len(coincidencias):,}")
+print(f"\nTotal Metacritic : {len(metacritic):,}")
+print(f"Total SteamSpy   : {len(steamspy):,}")
+print(f"AppID en común   : {len(coincidencias):,}")
 
-# 4. Integración de bases de datos
-silver = pd.merge(
+# ------------------------------------------------------------------
+# 5. Merge temporal para validar consistencia
+# ------------------------------------------------------------------
+comparacion = pd.merge(
     metacritic,
     steamspy,
     on="appid",
     how="inner"
 )
 
-print(f"\nDataset integrado: {silver.shape}")
+print(f"\nRegistros integrados: {comparacion.shape}")
 
-#5. Comparación de columnas
-print("\n=== Comparación de columnas ===")
+# ------------------------------------------------------------------
+# 6. Comparación de nombres
+# ------------------------------------------------------------------
+print("\n=== Comparación de nombres ===")
+
+diferencias = comparacion[
+    comparacion["name_x"] != comparacion["name_y"]
+]
+
+print("¿Todos los nombres coinciden?:", diferencias.empty)
+print("Cantidad de diferencias:", len(diferencias))
+
+if not diferencias.empty:
+    print(
+        diferencias[
+            ["appid", "name_x", "name_y"]
+        ].head(20)
+    )
+
+# ------------------------------------------------------------------
+# 7. Duplicados del dataset integrado
+# ------------------------------------------------------------------
+print("\n=== Duplicados ===")
+print(comparacion.duplicated().sum())
+
+# ------------------------------------------------------------------
+# 8. Valores nulos
+# ------------------------------------------------------------------
+print("\n=== Valores nulos (%) ===")
 print(
-    "¿Los nombres son iguales?:",
-    (silver["name_x"] == silver["name_y"]).all()
-)
-
-# Mostrar los primeros registros donde los nombres son diferentes
-diferencias = silver[silver["name_x"] != silver["name_y"]]
-
-print(diferencias[["appid", "name_x", "name_y"]].head(20))
-
-
-# 6. Limpieza de nombres
-silver["name"] = (
-    silver["name_y"]
-    .fillna(silver["name_x"])
-)
-
-silver["name"] = (
-    silver["name"]
-    .str.replace("™", "", regex=False)
-    .str.replace("®", "", regex=False)
-    .str.strip()
-)
-
-
-silver.drop(
-    columns=["name_x", "name_y"],
-    inplace=True
-)
-
-print(silver.columns.tolist())
-print(f"\nDataset integrado: {silver.shape}")
-
-
-# 7. Guardar datos Silver
-silver.to_parquet("data/silver/silver.parquet", index=False)
-
-# 8. Revisión de duplicados
-print(
-    "Duplicados:",
-    silver.duplicated().sum()
-)
-
-# 9. Revisión de valores nulos
-print(
-    (silver.isnull().mean()*100)
+    (comparacion.isnull().mean() * 100)
     .sort_values(ascending=False)
 )
