@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "name": "SteamSpyGame",
+  "namespace": "steamspy.bronze",
+  "doc": "Esquema Avro para registros individuales de videojuegos de SteamSpy",
+  "fields": [
+    {"name": "appid", "type": ["null", "string"], "default": null},
+    {"name": "name", "type": ["null", "string"], "default": null},
+    {"name": "developer", "type": ["null", "string"], "default": null},
+    {"name": "publisher", "type": ["null", "string"], "default": null},
+    {"name": "score_rank", "type": ["null", "string"], "default": null},
+    {"name": "positive", "type": ["null", "string"], "default": null},
+    {"name": "negative", "type": ["null", "string"], "default": null},
+    {"name": "userscore", "type": ["null", "string"], "default": null},
+    {"name": "owners", "type": ["null", "string"], "default": null},
+    {"name": "average_forever", "type": ["null", "string"], "default": null},
+    {"name": "average_2weeks", "type": ["null", "string"], "default": null},
+    {"name": "median_forever", "type": ["null", "string"], "default": null},
+    {"name": "median_2weeks", "type": ["null", "string"], "default": null},
+    {"name": "price", "type": ["null", "string"], "default": null},
+    {"name": "initialprice", "type": ["null", "string"], "default": null},
+    {"name": "discount", "type": ["null", "string"], "default": null},
+    {"name": "ccu", "type": ["null", "string"], "default": null}
+  ]
+}

@@ -1,10 +1,11 @@
 import os
 import logging
 from src.bronze.ingest_steamspy import ingesta_datos_steamspy
-from src.bronze.transform_steamspy_parquet import procesar_json_a_parquet
+from src.bronze.transform_steamspy_parquet import procesar_raw_a_parquet
 from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
 
 carpeta_logs = "logs"
+os.makedirs(carpeta_logs, exist_ok=True)
 ruta_log = os.path.join(carpeta_logs, "main.log")
 
 logger = logging.getLogger("main")
@@ -24,8 +25,8 @@ def mostrar_menu():
         print("\n============================================")
         print("    SISTEMA DE METRICAS STEAM - CIBERTEC")
         print("============================================")
-        print("1. Descargar JSONs desde SteamSpy")
-        print("2. Transformar SteamSpy JSONs a Parquet")
+        print("1. Descargar Avro desde SteamSpy")
+        print("2. Transformar SteamSpy Avro a Parquet")
         print("3. Transformar Metacritic CSV a Parquet")
         print("0. Salir")
         print("============================================")
@@ -34,13 +35,13 @@ def mostrar_menu():
 
         try:
             if opcion == "1":
-                logger.info("Iniciando pipeline nativo: Descarga desde SteamSpy API...")
+                logger.info("Iniciando pipeline nativo: Descarga en Avro desde SteamSpy API...")
                 ingesta_datos_steamspy()
                 logger.info("Pipeline finalizado: Descarga desde SteamSpy API completada.")
                 
             elif opcion == "2":
-                logger.info("Iniciando pipeline nativo: Transformación de SteamSpy JSONs a Parquet...")
-                procesar_json_a_parquet()
+                logger.info("Iniciando pipeline nativo: Transformación de SteamSpy Avro a Parquet...")
+                procesar_raw_a_parquet()
                 logger.info("Pipeline finalizado: Transformación a Parquet completada con éxito.")
                 
             elif opcion == "3":

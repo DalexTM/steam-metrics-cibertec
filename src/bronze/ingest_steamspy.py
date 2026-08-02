@@ -3,6 +3,10 @@ import os
 import requests
 import time
 import logging
+from typing import List, Dict, Any
+import fastavro
+
+RUTA_ESQUEMA_STEAMSPY = os.path.join("data", "raw", "steamspy", "schema", "steamspy_schema.avsc")
 
 carpeta_logs = "logs"
 ruta_log = os.path.join(carpeta_logs, "ingest_steamspy.log")
@@ -18,15 +22,36 @@ if not logger.handlers:
     logger.addHandler(fh)
     logger.addHandler(sh)
 
+def cargar_esquema_steamspy(ruta_esquema: str = RUTA_ESQUEMA_STEAMSPY) -> dict[Any, Any] | list[Any] | str:
+    """Carga y parsea el esquema Avro desde el archivo .avsc separado."""
+    with open(ruta_esquema, "r", encoding="utf-8") as f:
+        schema_json = json.load(f)
+    return fastavro.parse_schema(schema_json)
+
+def guardar_avro_steamspy(
+    registros: List[Dict[str, Any]],
+    ruta_salida: str,
+    esquema: dict[Any, Any] | list[Any] | str | None = None,
+) -> str:
+    """Escribe una lista de registros en formato Avro."""
+    if esquema is None:
+        esquema = cargar_esquema_steamspy()
+
+    with open(ruta_salida, "wb") as out:
+        fastavro.writer(out, esquema, registros)
+    return ruta_salida
+
+
 def ingesta_datos_steamspy():
 
-    carpeta_destino = os.path.join("data", "raw", "steamspy")
+    carpeta_destino = os.path.join("data", "raw", "steamspy", "data")
     pagina_actual = 0
     cabeceras = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
-    logger.info("Iniciando descarga de archivos JSON unitarios desde SteamSpy...")
+    esquema_avro = cargar_esquema_steamspy()
+    logger.info("Iniciando descarga de archivos AVRO desde SteamSpy...")
 
     try:
         while True:
@@ -44,24 +69,24 @@ def ingesta_datos_steamspy():
                 try:
                     data = response.json()
                 except Exception as json_error:
-                    logger.error(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON.")
+                    logger.error(f"La respuesta de la pagina {pagina_actual} NO se pudo parsear a JSON. Error: {json_error}")
                     break
 
-                if not data or (isinstance(data, dict) and "error" in data):
-                    logger.info(f"Se alcanzo el final de los datos en la pagina {pagina_actual}.")
-                    break
+                registros = [
+                    {k: str(v) if v is not None else None for k, v in record.items()}
+                    for record in data.values()
+                ]
 
-                nombre_archivo = f"page_{pagina_actual}.json"
+                nombre_archivo = f"page_{pagina_actual}.avro"
                 ruta_completa = os.path.join(carpeta_destino, nombre_archivo)
 
-                with open(ruta_completa, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
+                guardar_avro_steamspy(registros, ruta_completa, esquema=esquema_avro)
 
-                logger.info(f"Archivo '{ruta_completa}' guardado exitosamente.")
+                logger.info(f"Archivo Avro '{ruta_completa}' guardado exitosamente con {len(registros)} registros.")
                 pagina_actual += 1
 
-                logger.info("Esperando 60 segundos para cumplir con la politica de SteamSpy...")
-                time.sleep(60)
+                logger.info("Esperando 5 segundos para cumplir con la politica de SteamSpy...")
+                time.sleep(5)
 
             except Exception as e:
                 logger.error(f"Error inesperado en el proceso: {e}")
@@ -69,7 +94,7 @@ def ingesta_datos_steamspy():
     except KeyboardInterrupt:
         logger.warning("Proceso de descarga cancelado por el usuario (Ctrl + C).")
 
-    logger.info("Proceso de descarga finalizado.")
+    logger.info("Proceso de descarga Avro finalizado.")
 
 if __name__ == "__main__":
     ingesta_datos_steamspy()
