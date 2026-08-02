@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Excluir la persistencia de las capas procesadas en local
+data/bronze/*.parquet
+data/raw/metacritic/*.csv
+data/raw/steamspy/data/*.avro
