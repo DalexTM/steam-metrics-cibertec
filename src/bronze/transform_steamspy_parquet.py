@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import fastavro
 import logging
 
 carpeta_logs = "logs"
@@ -19,103 +20,71 @@ if not logger.handlers:
     logger.addHandler(fh)
     logger.addHandler(sh)
 
-DIRECTORIO_ENTRADA = os.path.join("data", "raw", "steamspy")
+DIRECTORIO_ENTRADA = os.path.join("data", "raw", "steamspy", "data")
 DIRECTORIO_SALIDA = os.path.join("data", "bronze")
 
 def tamanio_kb(ruta: str) -> float:
     return os.path.getsize(ruta) / 1024
 
-def formatear_columnas(df):
-    logger.info("Iniciando formateo y tipado de datos...")
-
-    logger.info("Normalizando identificadores y texto...")
-    df["appid"] = pd.to_numeric(df["appid"], errors="coerce").fillna(0).astype("int64")
-    df["name"] = df["name"].astype(str)
-    df["developer"] = df["developer"].astype(str)
-    df["publisher"] = df["publisher"].astype(str)
-    df["score_rank"] = df["score_rank"].astype(str)
-    df["owners"] = df["owners"].astype(str)
-
-    logger.info("Estandarizando metricas de votos y puntuaciones...")
-    df["positive"] = pd.to_numeric(df["positive"], errors="coerce").fillna(0).astype("int32")
-    df["negative"] = pd.to_numeric(df["negative"], errors="coerce").fillna(0).astype("int32")
-    df["userscore"] = pd.to_numeric(df["userscore"], errors="coerce").fillna(0).astype("int32")
-
-    logger.info("Formateando tiempos de juego y usuarios concurrentes...")
-    df["average_forever"] = pd.to_numeric(df["average_forever"], errors="coerce").fillna(0).astype("int32")
-    df["average_2weeks"] = pd.to_numeric(df["average_2weeks"], errors="coerce").fillna(0).astype("int32")
-    df["median_forever"] = pd.to_numeric(df["median_forever"], errors="coerce").fillna(0).astype("int32")
-    df["median_2weeks"] = pd.to_numeric(df["median_2weeks"], errors="coerce").fillna(0).astype("int32")
-    df["ccu"] = pd.to_numeric(df["ccu"], errors="coerce").fillna(0).astype("int32")
-
-    logger.info("Ajustando precios y descuentos...")
-    df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0.0).astype("float32")
-    df["initialprice"] = pd.to_numeric(df["initialprice"], errors="coerce").fillna(0.0).astype("float32")
-    df["discount"] = pd.to_numeric(df["discount"], errors="coerce").fillna(0).astype("int32")
-
-    logger.info("Formateo de columnas finalizado con exito.")
-    return df
+def leer_avro_steamspy(ruta_entrada: str):
+    """Lee un archivo Avro y retorna la lista de registros."""
+    records = []
+    with open(ruta_entrada, "rb") as fo:
+        reader = fastavro.reader(fo)
+        for record in reader:
+            records.append(record)
+    return records
 
 def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
     ruta = os.path.join(DIRECTORIO_SALIDA, f"{nombre}.parquet")
 
-    logger.info(f"Definiendo esquema PyArrow para {nombre}.parquet...")
-    esquema_steamspy = pa.schema(
-        [
-            ("appid", pa.int64()),
-            ("name", pa.string()),
-            ("developer", pa.string()),
-            ("publisher", pa.string()),
-            ("score_rank", pa.string()),
-            ("positive", pa.int32()),
-            ("negative", pa.int32()),
-            ("userscore", pa.int32()),
-            ("owners", pa.string()),
-            ("average_forever", pa.int32()),
-            ("average_2weeks", pa.int32()),
-            ("median_forever", pa.int32()),
-            ("median_2weeks", pa.int32()),
-            ("price", pa.float32()),
-            ("initialprice", pa.float32()),
-            ("discount", pa.int32()),
-            ("ccu", pa.int32()),
-        ]
-    )
-
-    df = formatear_columnas(df)
-
     logger.info("Convirtiendo DataFrame consolidado a tabla PyArrow...")
-    tabla = pa.Table.from_pandas(df, schema=esquema_steamspy, preserve_index=False)
+    tabla = pa.Table.from_pandas(df, preserve_index=False)
     
     logger.info("Escribiendo archivo Parquet en disco...")
     pq.write_table(tabla, ruta, compression="snappy")
     logger.info(f"Guardado exitoso: {ruta} ({tamanio_kb(ruta):.2f} KB)")
     return ruta
 
-def procesar_json_a_parquet():
+def procesar_raw_a_parquet():
     
-    logger.info(f"Buscando archivos JSON en la ruta: {DIRECTORIO_ENTRADA}")
-    archivos = sorted(
-        [f for f in os.listdir(DIRECTORIO_ENTRADA) if f.endswith(".json")],
-        key=lambda x: int(x.replace("page_", "").replace(".json", ""))
-    )
-
-    if not archivos:
-        logger.warning("No se encontraron archivos JSON para procesar.")
+    logger.info(f"Buscando archivos de entrada en la ruta: {DIRECTORIO_ENTRADA}")
+    if not os.path.exists(DIRECTORIO_ENTRADA):
+        logger.warning("El directorio de entrada no existe.")
         return
 
-    logger.info(f"Se encontraron {len(archivos)} archivos JSON. Iniciando lectura y unificacion...")
+    archivos_avro = sorted(
+        [f for f in os.listdir(DIRECTORIO_ENTRADA) if f.endswith(".avro")],
+        key=lambda x: int(x.replace("page_", "").replace(".avro", "")) if x.replace("page_", "").replace(".avro", "").isdigit() else x
+    )
+
+    archivos_json = sorted(
+        [f for f in os.listdir(DIRECTORIO_ENTRADA) if f.endswith(".json")],
+        key=lambda x: int(x.replace("page_", "").replace(".json", "")) if x.replace("page_", "").replace(".json", "").isdigit() else x
+    )
+
+    archivos_a_procesar = archivos_avro if archivos_avro else archivos_json
+
+    if not archivos_a_procesar:
+        logger.warning("No se encontraron archivos .avro ni .json para procesar.")
+        return
+
+    tipo_archivo = "AVRO" if archivos_avro else "JSON"
+    logger.info(f"Se encontraron {len(archivos_a_procesar)} archivos {tipo_archivo}. Iniciando lectura y unificacion...")
     dataframes_acumulados = []
 
-    for archivo in archivos:
+    for archivo in archivos_a_procesar:
         ruta_archivo = os.path.join(DIRECTORIO_ENTRADA, archivo)
         try:
-            logger.info(f"Procesando archivo: {archivo}")
-            with open(ruta_archivo, "r", encoding="utf-8") as f:
-                contenido_json = json.load(f)
-
-            df_pagina = pd.DataFrame(contenido_json).T
-            df_pagina = df_pagina.reset_index(drop=True)
+            logger.info(f"Procesando archivo ({tipo_archivo}): {archivo}")
+            if archivo.endswith(".avro"):
+                registros = leer_avro_steamspy(ruta_archivo)
+                df_pagina = pd.DataFrame(registros)
+            else:
+                with open(ruta_archivo, "r", encoding="utf-8") as f:
+                    contenido_json = json.load(f)
+                df_pagina = pd.DataFrame(contenido_json).T
+                df_pagina = df_pagina.reset_index(drop=True)
 
             dataframes_acumulados.append(df_pagina)
         except Exception as e:
@@ -123,7 +92,7 @@ def procesar_json_a_parquet():
             continue
 
     if dataframes_acumulados:
-        logger.info("Concatenando estructuras JSON en un solo DataFrame...")
+        logger.info("Concatenando estructuras en un solo DataFrame...")
         df_steamspy_total = pd.concat(dataframes_acumulados, ignore_index=True)
         logger.info(f"Consolidacion completa. Registros totales: {len(df_steamspy_total)}")
         guardar_parquet(df_steamspy_total, "bronze_steamspy")
@@ -132,4 +101,4 @@ def procesar_json_a_parquet():
         logger.warning("No se pudo estructurar ninguna informacion.")
 
 if __name__ == "__main__":
-    procesar_json_a_parquet()
+    procesar_raw_a_parquet()

@@ -1,5 +1,5 @@
 import os
-import random
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -26,57 +26,39 @@ NOMBRE_DATASET = "metacritic.csv"
 def tamano_kb(ruta: str) -> float:
     return os.path.getsize(ruta) / 1024
 
-def generar_score_sintetico(row):
-    score_original = int(row["Metacritic_score"])
-    if score_original > 0:
-        return score_original
-    
-    ccu = int(row["Peak_CCU"])
-    
-    if ccu > 500000:
-        return random.randint(85, 98)
-    elif ccu > 100000:
-        return random.randint(75, 90)
-    elif ccu > 1000:
-        return random.randint(55, 75)
-    else:
-        return random.randint(40, 65)
+def generar_score_sintetico(df: pd.DataFrame) -> pd.Series:
+    """Genera scores sintéticos de manera vectorizada utilizando máscaras de NumPy (Ultra Rápido)."""
+    score_num = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype(int)
+    ccu_num = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype(int)
 
-def formatear_columnas(df):
-    logger.info("Iniciando formateo y tipado de datos...")
-    
-    logger.info("Normalizando metricas numericas principales...")
-    df["Peak_CCU"] = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype("int64")
-    df["Metacritic_score"] = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype("int32")
-    
-    logger.info("Generando scores sinteticos basados en Peak_CCU...")
-    df["Metacritic_score"] = df.apply(generar_score_sintetico, axis=1)
-    
-    logger.info("Mapeando valores booleanos de compatibilidad de SO...")
-    mapa_bool = {"VERDADERO": True, "FALSO": False, True: True, False: False, "TRUE": True, "FALSE": False}
-    df["Windows"] = df["Windows"].astype(str).str.upper().map(mapa_bool).fillna(False)
-    df["Mac"] = df["Mac"].astype(str).str.upper().map(mapa_bool).fillna(False)
-    df["Linux"] = df["Linux"].astype(str).str.upper().map(mapa_bool).fillna(False)
-    
-    logger.info("Estandarizando metadatos y variables secundarias...")
-    df["AppID"] = pd.to_numeric(df["AppID"], errors="coerce").fillna(0).astype("int64")
-    df["Name"] = df["Name"].astype(str).fillna("")
-    df["Release_date"] = df["Release_date"].astype(str).fillna("")
-    df["Required_age"] = pd.to_numeric(df["Required_age"], errors="coerce").fillna(0).astype("int32")
-    df["About_the_game"] = df["About_the_game"].astype(str).fillna("")
-    df["Supported_languages"] = df["Supported_languages"].astype(str).fillna("")
-    df["Full_audio_languages"] = df["Full_audio_languages"].astype(str).fillna("")
-    df["Reviews"] = df["Reviews"].astype(str).fillna("")
-    df["Website"] = df["Website"].astype(str).fillna("")
-    df["Recommendations"] = pd.to_numeric(df["Recommendations"], errors="coerce").fillna(0).astype("int64")
-    df["Average_playtime_forever"] = pd.to_numeric(df["Average_playtime_forever"], errors="coerce").fillna(0).astype("int32")
-    df["Average_playtime_two_weeks"] = pd.to_numeric(df["Average_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
-    df["Median_playtime_forever"] = pd.to_numeric(df["Median_playtime_forever"], errors="coerce").fillna(0).astype("int32")
-    df["Median_playtime_two_weeks"] = pd.to_numeric(df["Median_playtime_two_weeks"], errors="coerce").fillna(0).astype("int32")
-    df["Categories"] = df["Categories"].astype(str).fillna("")
-    df["Genres"] = df["Genres"].astype(str).fillna("")
+    mask_zero = score_num <= 0
+    score_final = score_num.astype(str)
 
-    logger.info("Formateo de columnas finalizado con exito.")
+    cond_500k = mask_zero & (ccu_num > 500000)
+    cond_100k = mask_zero & (ccu_num > 100000) & (ccu_num <= 500000)
+    cond_1k   = mask_zero & (ccu_num > 1000) & (ccu_num <= 100000)
+    cond_else = mask_zero & (ccu_num <= 1000)
+
+    if cond_500k.any():
+        score_final.loc[cond_500k] = np.random.randint(85, 99, size=cond_500k.sum()).astype(str).tolist()
+    if cond_100k.any():
+        score_final.loc[cond_100k] = np.random.randint(75, 91, size=cond_100k.sum()).astype(str).tolist()
+    if cond_1k.any():
+        score_final.loc[cond_1k] = np.random.randint(55, 76, size=cond_1k.sum()).astype(str).tolist()
+    if cond_else.any():
+        score_final.loc[cond_else] = np.random.randint(40, 66, size=cond_else.sum()).astype(str).tolist()
+
+    return score_final
+
+def formatear_columnas(df: pd.DataFrame) -> pd.DataFrame:
+    logger.info("Generando scores sinteticos basados en Peak_CCU (vectorizado)...")
+    df["Metacritic_score"] = generar_score_sintetico(df)
+
+    logger.info("Iniciando formateo de columnas a string...")
+    for col in df.columns:
+        df[col] = df[col].fillna("").astype(str)
+
+    logger.info("Formateo de columnas a string finalizado con exito.")
     return df
 
 def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
@@ -85,25 +67,25 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
 
     esquema_metacritic = pa.schema(
         [
-            ("AppID", pa.int64()),
+            ("AppID", pa.string()),
             ("Name", pa.string()),
             ("Release_date", pa.string()),
-            ("Peak_CCU", pa.int64()),
-            ("Required_age", pa.int32()),
+            ("Peak_CCU", pa.string()),
+            ("Required_age", pa.string()),
             ("About_the_game", pa.string()),
             ("Supported_languages", pa.string()),
             ("Full_audio_languages", pa.string()),
             ("Reviews", pa.string()),
             ("Website", pa.string()),
-            ("Windows", pa.bool_()),
-            ("Mac", pa.bool_()),
-            ("Linux", pa.bool_()),
-            ("Metacritic_score", pa.int32()),
-            ("Recommendations", pa.int64()),
-            ("Average_playtime_forever", pa.int32()),
-            ("Average_playtime_two_weeks", pa.int32()),
-            ("Median_playtime_forever", pa.int32()),
-            ("Median_playtime_two_weeks", pa.int32()),
+            ("Windows", pa.string()),
+            ("Mac", pa.string()),
+            ("Linux", pa.string()),
+            ("Metacritic_score", pa.string()),
+            ("Recommendations", pa.string()),
+            ("Average_playtime_forever", pa.string()),
+            ("Average_playtime_two_weeks", pa.string()),
+            ("Median_playtime_forever", pa.string()),
+            ("Median_playtime_two_weeks", pa.string()),
             ("Categories", pa.string()),
             ("Genres", pa.string()),
         ]
@@ -111,8 +93,9 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
 
     logger.info("Convirtiendo DataFrame a tabla PyArrow...")
     tabla = pa.Table.from_pandas(df, schema=esquema_metacritic, preserve_index=False)
-    
+
     logger.info("Escribiendo archivo Parquet en disco...")
+    os.makedirs(DIRECTORIO_SALIDA, exist_ok=True)
     pq.write_table(tabla, ruta, compression="snappy")
     logger.info(f"Guardado exitoso: {ruta} ({tamano_kb(ruta):.2f} KB)")
     return ruta
@@ -120,16 +103,16 @@ def guardar_parquet(df: pd.DataFrame, nombre: str) -> str:
 def procesar_csv_a_parquet():
     ruta_dataset = os.path.join(DIRECTORIO_ENTRADA, NOMBRE_DATASET)
     logger.info(f"Iniciando lectura del dataset: {ruta_dataset}")
-    
-    df = pd.read_csv(ruta_dataset, encoding="utf-8", low_memory=False)
+
+    df = pd.read_csv(ruta_dataset, encoding="utf-8", low_memory=False, dtype=str)
     logger.info(f"Dataset cargado correctamente. Registros encontrados: {len(df)}")
-    
+
     logger.info("Normalizando nombres de cabeceras...")
     df.columns = df.columns.str.replace(" ", "_")
-    
+
     df = formatear_columnas(df)
     guardar_parquet(df, "bronze_metacritic")
-    
+
     logger.info("Procesamiento de Metacritic a Parquet finalizado con exito.")
 
 if __name__ == "__main__":
