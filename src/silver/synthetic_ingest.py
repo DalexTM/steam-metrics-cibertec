@@ -32,7 +32,6 @@ def main():
     )
 
 
-
     # 4. Validar e Integrar
     print("\n[4/14] Validando llaves e integrando datasets...")
     silver = data_quality.validate_and_merge(metacritic, steamspy)
@@ -46,29 +45,32 @@ def main():
     print("\n[6/14] Estandarizando tipos de datos...")
     silver = data_quality.standardize_data_types(silver)
 
-    # 7. Pandera
-    print("\n[7/14] Validando esquema Pandera...")
+
+    # 7. Feature Engineering
+    print("\n[7/14] Creando variables derivadas...")
+    silver = data_quality.create_features(silver)
+
+    # 8. Pandera
+    print("\n[8/14] Validando esquema Pandera...")
     silver = schema_validation.validate_schema(silver)
 
-    # 8. Feature Engineering
-    print("\n[8/14] Creando variables derivadas...")
-    silver = data_quality.create_features(silver)
 
     # 9. Normalizando variables
     print("\n[9/14] Normalizando variables...")
     silver = data_quality.normalize_features(silver)
 
 
-    # 10. Benchmark de vectorización
-    print("\n[10/14] Ejecutando benchmark de vectorización...")
-    data_quality.benchmark_vectorization(silver)
-
-
-    # 11. Optimización de memoria
-    print("\n[11/14] Optimizando memoria...")
+    # 10. Optimización de memoria
+    print("\n[10/14] Optimizando memoria...")
 
     silver_before = silver.copy()
     silver = data_quality.optimize_memory(silver)
+
+
+   # 11. Benchmark de vectorización
+    print("\n[11/14] Ejecutando benchmark de vectorización...")
+    data_quality.benchmark_vectorization(silver)
+
 
     # 12. Gráfico de optimización
     print("\n[12/14] Generando gráfico de memoria...")

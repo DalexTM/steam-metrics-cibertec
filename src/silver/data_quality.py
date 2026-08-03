@@ -44,7 +44,7 @@ def validate_and_merge(
     metacritic_df: pd.DataFrame, steamspy_df: pd.DataFrame
 ) -> pd.DataFrame:
     """Imprime diagnósticos de llaves y realiza el inner join."""
-    # Impresiones de diagnóstico (de tu punto 3)
+    # Impresiones de diagnóstico
     print("\n--- Diagnóstico de Llaves de Integración ---")
     print(f"Tipo dato appid - Metacritic: {metacritic_df['appid'].dtype}")
     print(f"Tipo dato appid - SteamSpy: {steamspy_df['appid'].dtype}")
@@ -68,7 +68,7 @@ def clean_game_names(silver_df: pd.DataFrame) -> pd.DataFrame:
     """Compara, resuelve nulos y limpia caracteres especiales de los nombres."""
     df = silver_df.copy()
 
-    # Diagnóstico de diferencias (de tu punto 5)
+    # Diagnóstico de diferencias
     print("\n--- Análisis de Nombres (x vs y) ---")
     iguales = (df["name_x"] == df["name_y"]).all()
     print(f"¿Los nombres son 100% iguales?: {iguales}")
@@ -78,7 +78,7 @@ def clean_game_names(silver_df: pd.DataFrame) -> pd.DataFrame:
         print("Muestra de diferencias:")
         print(diferencias[["appid", "name_x", "name_y"]].head(5))
 
-    # Limpieza de nombres (de tu punto 6)
+    # Limpieza de nombres
     df["name"] = df["name_y"].fillna(df["name_x"])
     df["name"] = (
         df["name"]
