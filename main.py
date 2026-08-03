@@ -3,6 +3,7 @@ import logging
 from src.bronze.ingest_steamspy import ingesta_datos_steamspy
 from src.bronze.transform_steamspy_parquet import procesar_raw_a_parquet
 from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
+from src.silver.synthetic_ingest import main as procesar_bronze_a_silver
 
 carpeta_logs = "logs"
 os.makedirs(carpeta_logs, exist_ok=True)
@@ -19,6 +20,7 @@ if not logger.handlers:
     logger.addHandler(fh)
     logger.addHandler(sh)
 
+
 def mostrar_menu():
     logger.info("Iniciando APP Steam Metrics.")
     while True:
@@ -28,6 +30,7 @@ def mostrar_menu():
         print("1. Descargar Avro desde SteamSpy")
         print("2. Transformar SteamSpy Avro a Parquet")
         print("3. Transformar Metacritic CSV a Parquet")
+        print("4. Integración y Limpieza (Bronze -> Silver)")
         print("0. Salir")
         print("============================================")
 
@@ -35,31 +38,55 @@ def mostrar_menu():
 
         try:
             if opcion == "1":
-                logger.info("Iniciando pipeline nativo: Descarga en Avro desde SteamSpy API...")
+                logger.info(
+                    "Iniciando pipeline nativo: Descarga en Avro desde SteamSpy API..."
+                )
                 ingesta_datos_steamspy()
-                logger.info("Pipeline finalizado: Descarga desde SteamSpy API completada.")
-                
+                logger.info(
+                    "Pipeline finalizado: Descarga desde SteamSpy API completada."
+                )
+
             elif opcion == "2":
-                logger.info("Iniciando pipeline nativo: Transformación de SteamSpy Avro a Parquet...")
+                logger.info(
+                    "Iniciando pipeline nativo: Transformación de SteamSpy Avro a Parquet..."
+                )
                 procesar_raw_a_parquet()
-                logger.info("Pipeline finalizado: Transformación a Parquet completada con éxito.")
-                
+                logger.info(
+                    "Pipeline finalizado: Transformación a Parquet completada con éxito."
+                )
+
             elif opcion == "3":
-                logger.info("Iniciando pipeline nativo: Transformación de Metacritic CSV a Parquet...")
+                logger.info(
+                    "Iniciando pipeline nativo: Transformación de Metacritic CSV a ParquetF..."
+                )
                 procesar_csv_a_parquet()
-                logger.info("Pipeline finalizado: Transformación a Parquet completada con éxito.")
-                
+                logger.info(
+                    "Pipeline finalizado: Transformación a Parquet completada con éxito."
+                )
+
+            elif opcion == "4":
+                logger.info(
+                    "Iniciando pipeline nativo: Integración y Limpieza (Bronze -> Silver)..."
+                )
+                procesar_bronze_a_silver()
+                logger.info(
+                    "Pipeline finalizado: Procesamiento Bronze a Silver completado con éxito."
+                )
+
             elif opcion == "0":
                 logger.info("Saliendo del APP Steam Metrics.")
                 break
-                
+
             else:
                 logger.warning("Opcion no valida. Intente de nuevo.")
-                
+
         except Exception as e:
-            logger.error(f"Falla crítica detectada durante la ejecución de la opción {opcion}: {e}")
+            logger.error(
+                f"Falla crítica detectada durante la ejecución de la opción {opcion}: {e}"
+            )
 
         input("\nPresione Enter para continuar...")
+
 
 if __name__ == "__main__":
     mostrar_menu()
