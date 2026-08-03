@@ -170,76 +170,132 @@ def standardize_data_types(silver_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def create_features(silver_df: pd.DataFrame) -> pd.DataFrame:
+def create_features(silver_df):
     """
-    Crea variables derivadas (Feature Engineering)
-    y clasificaciones para el dataset Silver.
+    Crea nuevas variables derivadas y realiza agregaciones.
     """
+
+    print("===== Enriquecimiento interno =====")
 
     df = silver_df.copy()
 
-    # ==========================
+    # =====================================
     # Variables derivadas
-    # ==========================
+    # =====================================
+
+    # Precio en dólares
+    df["price_usd"] = df["price"] / 100
 
     # Total de reseñas
     df["total_reviews"] = (
-        df["positive"] + df["negative"]
+        df["positive"] +
+        df["negative"]
     )
 
     # Tasa de aprobación
     df["approval_rate"] = (
-        df["positive"] / df["total_reviews"]
+        df["positive"] /
+        df["total_reviews"]
     )
 
     # Año de lanzamiento
-    df["release_year"] = (
-        df["Release_date"].dt.year
-    )
+    df["release_year"] = df["Release_date"].dt.year
 
     # Antigüedad del juego
-    df["game_age"] = (
-        2026 - df["release_year"]
-    )
+    df["game_age"] = 2026 - df["release_year"]
 
     # Diferencia entre crítica y usuarios
     df["score_gap"] = (
-        df["Metacritic_score"] - df["userscore"]
+        df["Metacritic_score"] -
+        df["userscore"]
     )
 
-    print("\n--- Variables Derivadas ---")
-    print(
-        df[
-            [
-                "total_reviews",
-                "approval_rate",
-                "release_year",
-                "game_age",
-                "score_gap",
-            ]
-        ].head()
+    print("\nVariables derivadas:")
+    print(df[["price_usd", "approval_rate", "release_year", "game_age", "score_gap"]].head())
+    
+    # =====================================
+    # Agregaciones
+    # =====================================
+
+    print("\n--- Promedio de jugadores por género ---")
+
+    avg_players = (
+        df.groupby("Genres", as_index=False)["ccu"]
+        .mean()
+        .sort_values("ccu", ascending=False)
     )
 
-    # ==========================
+    print(avg_players.head(10).to_string(index=False))
+
+    print("\n--- Precio promedio por género ---")
+
+    avg_price = (
+        df.groupby("Genres", as_index=False)["price_usd"]
+        .mean()
+        .sort_values("price_usd", ascending=False)
+    )
+
+    print(avg_price.head(10).to_string(index=False))
+
+    print("\n--- Metacritic promedio por género ---")
+
+    avg_metacritic = (
+        df.groupby("Genres", as_index=False)["Metacritic_score"]
+        .mean()
+        .sort_values("Metacritic_score", ascending=False)
+    )
+
+    print(avg_metacritic.head(10).to_string(index=False))
+
+    # =====================================
     # Binning
-    # ==========================
+    # =====================================
 
     df["price_range"] = pd.cut(
-        df["price"],
-        bins=[0, 1000, 3000, 6000, float("inf")],
-        labels=[
-            "Bajo",
-            "Medio",
-            "Alto",
-            "Premium",
-        ],
-        include_lowest=True,
+        df["price_usd"],
+        bins=[0, 10, 30, 60, float("inf")],
+        labels=["Bajo", "Medio", "Alto", "Premium"],
+        include_lowest=True
     )
 
-    print("\n--- Binning Precio ---")
-    print(df[["price", "price_range"]].head())
+    print("\nClasificación por rango de precio:")
+    print(df[["price_usd", "price_range"]].head())
+    
+    price_counts = (
+            df["price_range"]
+            .value_counts()
+            .sort_index()
+        )
+    
+    print(price_counts)
+    
+    import matplotlib.pyplot as plt
 
+    price_counts = (
+    df["price_range"]
+    .value_counts()
+    .sort_index()
+    )
+
+    plt.figure(figsize=(8,5))
+
+    plt.bar(price_counts.index.astype(str), price_counts.values)
+
+    plt.title("Distribución de juegos por rango de precio")
+    plt.xlabel("Rango de precio (USD)")
+    plt.ylabel("Cantidad de juegos")
+
+# Mostrar la cantidad encima de cada barra
+    for i, v in enumerate(price_counts.values):
+        plt.text(i, v, str(v), ha="center", va="bottom")
+
+    plt.tight_layout()
+    plt.show()
+    
+    
     return df
+
+    
 
 
 def normalize_features(silver_df: pd.DataFrame) -> pd.DataFrame:
@@ -254,7 +310,7 @@ def normalize_features(silver_df: pd.DataFrame) -> pd.DataFrame:
     # ==========================
 
     # Precio original viene en centavos
-    df["price_usd"] = df["price"] / 100
+    # df["price_usd"] = df["price"] / 100
 
     # ==========================
     # Normalización

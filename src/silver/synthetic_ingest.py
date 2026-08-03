@@ -13,6 +13,10 @@ def main():
     print("\n[1/14] Cargando archivos Parquet desde Bronze...")
     metacritic = pd.read_parquet("data/bronze/bronze_metacritic.parquet")
     steamspy = pd.read_parquet("data/bronze/bronze_steamspy.parquet")
+    
+    print("===== Dimensiones de los datasets =====")
+    print(f"Metacritic: {metacritic.shape[0]:,} filas y {metacritic.shape[1]} columnas")
+    print(f"SteamSpy: {steamspy.shape[0]:,} filas y {steamspy.shape[1]} columnas")
 
     # 2. Estandarizar columnas
     print("\n[2/14] Estandarizando nombres de columnas...")
@@ -42,8 +46,11 @@ def main():
 
 
     # 6. Estandarización de tipos de datos
+    print("Tipos de datos antes de la estandarización:")
+    print(silver.dtypes)
     print("\n[6/14] Estandarizando tipos de datos...")
     silver = data_quality.standardize_data_types(silver)
+    print(silver.dtypes)
 
 
     # 7. Feature Engineering
