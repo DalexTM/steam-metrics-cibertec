@@ -26,34 +26,7 @@ NOMBRE_DATASET = "metacritic.csv"
 def tamano_kb(ruta: str) -> float:
     return os.path.getsize(ruta) / 1024
 
-def generar_score_sintetico(df: pd.DataFrame) -> pd.Series:
-    """Genera scores sintéticos de manera vectorizada utilizando máscaras de NumPy (Ultra Rápido)."""
-    score_num = pd.to_numeric(df["Metacritic_score"], errors="coerce").fillna(0).astype(int)
-    ccu_num = pd.to_numeric(df["Peak_CCU"], errors="coerce").fillna(0).astype(int)
-
-    mask_zero = score_num <= 0
-    score_final = score_num.astype(str)
-
-    cond_500k = mask_zero & (ccu_num > 500000)
-    cond_100k = mask_zero & (ccu_num > 100000) & (ccu_num <= 500000)
-    cond_1k   = mask_zero & (ccu_num > 1000) & (ccu_num <= 100000)
-    cond_else = mask_zero & (ccu_num <= 1000)
-
-    if cond_500k.any():
-        score_final.loc[cond_500k] = np.random.randint(85, 99, size=cond_500k.sum()).astype(str).tolist()
-    if cond_100k.any():
-        score_final.loc[cond_100k] = np.random.randint(75, 91, size=cond_100k.sum()).astype(str).tolist()
-    if cond_1k.any():
-        score_final.loc[cond_1k] = np.random.randint(55, 76, size=cond_1k.sum()).astype(str).tolist()
-    if cond_else.any():
-        score_final.loc[cond_else] = np.random.randint(40, 66, size=cond_else.sum()).astype(str).tolist()
-
-    return score_final
-
 def formatear_columnas(df: pd.DataFrame) -> pd.DataFrame:
-    logger.info("Generando scores sinteticos basados en Peak_CCU (vectorizado)...")
-    df["Metacritic_score"] = generar_score_sintetico(df)
-
     logger.info("Iniciando formateo de columnas a string...")
     for col in df.columns:
         df[col] = df[col].fillna("").astype(str)
