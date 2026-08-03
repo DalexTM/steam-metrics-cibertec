@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.impute import KNNImputer
+from sklearn.neighbors import KNeighborsRegressor
 
 carpeta_logs = "logs"
 os.makedirs(carpeta_logs, exist_ok=True)
@@ -172,12 +172,12 @@ def standardize_data_types(silver_df: pd.DataFrame) -> pd.DataFrame:
 
 def impute_missing_scores(silver_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Imputa valores faltantes/cero en Metacritic_score utilizando KNNImputer
+    Imputa valores faltantes/cero en Metacritic_score utilizando KNeighborsRegressor
     basado en métricas de precio, reseñas y tiempo de juego.
     """
     df = silver_df.copy()
 
-    logger.info("===== Imputación de Metacritic_score con KNNImputer =====")
+    logger.info("===== Imputación de Metacritic_score con KNN =====")
 
     # Reemplazar ceros (ausencia de score) por NaN
     df["Metacritic_score"] = df["Metacritic_score"].replace(0, np.nan)
@@ -189,33 +189,30 @@ def impute_missing_scores(silver_df: pd.DataFrame) -> pd.DataFrame:
     if "price_usd" not in df.columns and "price" in df.columns:
         df["price_usd"] = df["price"] / 100
 
-    col_apoyo = [
-        c for c in ["price_usd", "positive", "negative", "Peak_CCU", "Average_playtime_forever", "Metacritic_score"]
+    feature_cols = [
+        c for c in ["price_usd", "positive", "negative", "Peak_CCU", "Average_playtime_forever"]
         if c in df.columns
     ]
 
-    if nulos_meta > 0 and len(col_apoyo) > 1:
-        scaler = MinMaxScaler()
-        df_scaled = pd.DataFrame(
-            scaler.fit_transform(df[col_apoyo]),
-            columns=col_apoyo,
-            index=df.index
-        )
+    if nulos_meta > 0 and len(feature_cols) > 0:
+        mask_missing = df["Metacritic_score"].isnull()
+        mask_known = ~mask_missing
 
-        imputer = KNNImputer(n_neighbors=5)
-        df_imputed_scaled = pd.DataFrame(
-            imputer.fit_transform(df_scaled),
-            columns=col_apoyo,
-            index=df.index
-        )
+        if mask_known.sum() > 0 and mask_missing.sum() > 0:
+            # Escalar únicamente las variables predictoras
+            scaler = MinMaxScaler()
+            X_features = df[feature_cols].fillna(0)
+            X_scaled = scaler.fit_transform(X_features)
 
-        df_imputed = pd.DataFrame(
-            scaler.inverse_transform(df_imputed_scaled),
-            columns=col_apoyo,
-            index=df.index
-        )
+            X_train = X_scaled[mask_known]
+            y_train = df.loc[mask_known, "Metacritic_score"]
+            X_test = X_scaled[mask_missing]
 
-        df["Metacritic_score"] = df_imputed["Metacritic_score"].round(1)
+            # KNeighborsRegressor usa KD-Tree/Ball-Tree y paralelismo (n_jobs=-1)
+            knn = KNeighborsRegressor(n_neighbors=5, weights="uniform", n_jobs=-1)
+            knn.fit(X_train, y_train)
+
+            df.loc[mask_missing, "Metacritic_score"] = np.round(knn.predict(X_test), 1)
 
         logger.info(
             "Imputación KNN finalizada con éxito. Nulos restantes en Metacritic_score: %d",
