@@ -1,8 +1,26 @@
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+import os
+import logging
+import time
 import matplotlib.pyplot as plt
 import numpy as np
-import time
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.impute import KNNImputer
+
+carpeta_logs = "logs"
+os.makedirs(carpeta_logs, exist_ok=True)
+ruta_log = os.path.join(carpeta_logs, "data_quality.log")
+
+logger = logging.getLogger("data_quality")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    fh = logging.FileHandler(ruta_log, encoding="utf-8")
+    fh.setFormatter(formatter)
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
 
 
 def standardize_columns(metacritic_df: pd.DataFrame) -> pd.DataFrame:
@@ -33,11 +51,9 @@ def remove_duplicates(df: pd.DataFrame, key: str) -> pd.DataFrame:
 
     removed = before - len(df)
 
-    print(f"Duplicados eliminados por '{key}': {removed}")
+    logger.info(f"Duplicados eliminados por '{key}': {removed}")
 
     return df
-
-
 
 
 def validate_and_merge(
@@ -45,22 +61,18 @@ def validate_and_merge(
 ) -> pd.DataFrame:
     """Imprime diagnósticos de llaves y realiza el inner join."""
     # Impresiones de diagnóstico
-    print("\n--- Diagnóstico de Llaves de Integración ---")
-    print(f"Tipo dato appid - Metacritic: {metacritic_df['appid'].dtype}")
-    print(f"Tipo dato appid - SteamSpy: {steamspy_df['appid'].dtype}")
-    print(f"IDs únicos - Metacritic: {metacritic_df['appid'].nunique()}")
-    print(f"IDs únicos - SteamSpy: {steamspy_df['appid'].nunique()}")
+    logger.info("\n--- Diagnóstico de Llaves de Integración ---")
+    logger.info(f"Tipo dato appid - Metacritic: {metacritic_df['appid'].dtype}")
+    logger.info(f"Tipo dato appid - SteamSpy: {steamspy_df['appid'].dtype}")
+    logger.info(f"IDs únicos - Metacritic: {metacritic_df['appid'].nunique()}")
+    logger.info(f"IDs únicos - SteamSpy: {steamspy_df['appid'].nunique()}")
 
-    coincidencias = set(metacritic_df["appid"]) & set(
-        steamspy_df["appid"]
-    )
-    print(f"Juegos en común: {len(coincidencias):,}")
+    coincidencias = set(metacritic_df["appid"]) & set(steamspy_df["appid"])
+    logger.info(f"Juegos en común: {len(coincidencias):,}")
 
     # Integración de bases de datos
-    silver_df = pd.merge(
-        metacritic_df, steamspy_df, on="appid", how="inner"
-    )
-    print(f"Dataset tras inner join: {silver_df.shape}")
+    silver_df = pd.merge(metacritic_df, steamspy_df, on="appid", how="inner")
+    logger.info(f"Dataset tras inner join: {silver_df.shape}")
     return silver_df
 
 
@@ -69,14 +81,16 @@ def clean_game_names(silver_df: pd.DataFrame) -> pd.DataFrame:
     df = silver_df.copy()
 
     # Diagnóstico de diferencias
-    print("\n--- Análisis de Nombres (x vs y) ---")
+    logger.info("\n--- Análisis de Nombres (x vs y) ---")
     iguales = (df["name_x"] == df["name_y"]).all()
-    print(f"¿Los nombres son 100% iguales?: {iguales}")
+    logger.info(f"¿Los nombres son 100% iguales?: {iguales}")
 
     if not iguales:
         diferencias = df[df["name_x"] != df["name_y"]]
-        print("Muestra de diferencias:")
-        print(diferencias[["appid", "name_x", "name_y"]].head(5))
+        logger.info(
+            "Muestra de diferencias:\n%s",
+            diferencias[["appid", "name_x", "name_y"]].head(5),
+        )
 
     # Limpieza de nombres
     df["name"] = df["name_y"].fillna(df["name_x"])
@@ -94,12 +108,14 @@ def clean_game_names(silver_df: pd.DataFrame) -> pd.DataFrame:
 
 def verify_final_quality(silver_df: pd.DataFrame):
     """Realiza la revisión final de duplicados y nulos para los logs."""
-    print("\n--- Reporte Final de Calidad Silver ---")
-    print(f"Columnas finales: {silver_df.columns.tolist()}")
-    print(f"Estructura final: {silver_df.shape}")
-    print(f"Duplicados totales: {silver_df.duplicated().sum()}")
-    print("\nPorcentaje de valores nulos por columna:")
-    print((silver_df.isnull().mean() * 100).sort_values(ascending=False))
+    logger.info("\n--- Reporte Final de Calidad Silver ---")
+    logger.info(f"Columnas finales: {silver_df.columns.tolist()}")
+    logger.info(f"Estructura final: {silver_df.shape}")
+    logger.info(f"Duplicados totales: {silver_df.duplicated().sum()}")
+    logger.info(
+        "\nPorcentaje de valores nulos por columna:\n%s",
+        (silver_df.isnull().mean() * 100).sort_values(ascending=False),
+    )
 
 
 def standardize_data_types(silver_df: pd.DataFrame) -> pd.DataFrame:
@@ -113,10 +129,7 @@ def standardize_data_types(silver_df: pd.DataFrame) -> pd.DataFrame:
     # Variables de fecha
     # ==========================
     if "Release_date" in df.columns:
-        df["Release_date"] = pd.to_datetime(
-            df["Release_date"],
-            errors="coerce"
-        )
+        df["Release_date"] = pd.to_datetime(df["Release_date"], errors="coerce")
 
     # ==========================
     # Variables numéricas
@@ -136,36 +149,78 @@ def standardize_data_types(silver_df: pd.DataFrame) -> pd.DataFrame:
         "price",
         "initialprice",
         "discount",
-        "ccu"
+        "ccu",
     ]
 
     for col in columnas_numericas:
         if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col],
-                errors="coerce"
-            )
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # ==========================
     # Variables booleanas
     # ==========================
-    columnas_bool = [
-        "Windows",
-        "Mac",
-        "Linux"
-    ]
+    columnas_bool = ["Windows", "Mac", "Linux"]
 
     for col in columnas_bool:
         if col in df.columns:
             df[col] = (
-                df[col]
-                .astype(str)
-                .str.strip()
-                .map({
-                    "True": True,
-                    "False": False
-                })
+                df[col].astype(str).str.strip().map({"True": True, "False": False})
             )
+
+    return df
+
+
+def impute_missing_scores(silver_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Imputa valores faltantes/cero en Metacritic_score utilizando KNNImputer
+    basado en métricas de precio, reseñas y tiempo de juego.
+    """
+    df = silver_df.copy()
+
+    logger.info("===== Imputación de Metacritic_score con KNNImputer =====")
+
+    # Reemplazar ceros (ausencia de score) por NaN
+    df["Metacritic_score"] = df["Metacritic_score"].replace(0, np.nan)
+
+    nulos_meta = df["Metacritic_score"].isnull().sum()
+    logger.info("Registros con Metacritic_score nulos a imputar: %d", nulos_meta)
+
+    # Garantizar presencia de price_usd para la distancia
+    if "price_usd" not in df.columns and "price" in df.columns:
+        df["price_usd"] = df["price"] / 100
+
+    col_apoyo = [
+        c for c in ["price_usd", "positive", "negative", "Peak_CCU", "Average_playtime_forever", "Metacritic_score"]
+        if c in df.columns
+    ]
+
+    if nulos_meta > 0 and len(col_apoyo) > 1:
+        scaler = MinMaxScaler()
+        df_scaled = pd.DataFrame(
+            scaler.fit_transform(df[col_apoyo]),
+            columns=col_apoyo,
+            index=df.index
+        )
+
+        imputer = KNNImputer(n_neighbors=5)
+        df_imputed_scaled = pd.DataFrame(
+            imputer.fit_transform(df_scaled),
+            columns=col_apoyo,
+            index=df.index
+        )
+
+        df_imputed = pd.DataFrame(
+            scaler.inverse_transform(df_imputed_scaled),
+            columns=col_apoyo,
+            index=df.index
+        )
+
+        df["Metacritic_score"] = df_imputed["Metacritic_score"].round(1)
+
+        logger.info(
+            "Imputación KNN finalizada con éxito. Nulos restantes en Metacritic_score: %d",
+            df["Metacritic_score"].isnull().sum()
+        )
 
     return df
 
@@ -175,7 +230,7 @@ def create_features(silver_df):
     Crea nuevas variables derivadas y realiza agregaciones.
     """
 
-    print("===== Enriquecimiento interno =====")
+    logger.info("===== Enriquecimiento interno =====")
 
     df = silver_df.copy()
 
@@ -187,16 +242,10 @@ def create_features(silver_df):
     df["price_usd"] = df["price"] / 100
 
     # Total de reseñas
-    df["total_reviews"] = (
-        df["positive"] +
-        df["negative"]
-    )
+    df["total_reviews"] = df["positive"] + df["negative"]
 
     # Tasa de aprobación
-    df["approval_rate"] = (
-        df["positive"] /
-        df["total_reviews"]
-    )
+    df["approval_rate"] = df["positive"] / df["total_reviews"]
 
     # Año de lanzamiento
     df["release_year"] = df["Release_date"].dt.year
@@ -205,19 +254,20 @@ def create_features(silver_df):
     df["game_age"] = 2026 - df["release_year"]
 
     # Diferencia entre crítica y usuarios
-    df["score_gap"] = (
-        df["Metacritic_score"] -
-        df["userscore"]
+    df["score_gap"] = df["Metacritic_score"] - df["userscore"]
+
+    logger.info(
+        "\nVariables derivadas:\n%s",
+        df[
+            ["price_usd", "approval_rate", "release_year", "game_age", "score_gap"]
+        ].head(),
     )
 
-    print("\nVariables derivadas:")
-    print(df[["price_usd", "approval_rate", "release_year", "game_age", "score_gap"]].head())
-    
     # =====================================
     # Agregaciones
     # =====================================
 
-    print("\n--- Promedio de jugadores por género ---")
+    logger.info("\n--- Promedio de jugadores por género ---")
 
     avg_players = (
         df.groupby("Genres", as_index=False)["ccu"]
@@ -225,9 +275,9 @@ def create_features(silver_df):
         .sort_values("ccu", ascending=False)
     )
 
-    print(avg_players.head(10).to_string(index=False))
+    logger.info("\n%s", avg_players.head(10).to_string(index=False))
 
-    print("\n--- Precio promedio por género ---")
+    logger.info("\n--- Precio promedio por género ---")
 
     avg_price = (
         df.groupby("Genres", as_index=False)["price_usd"]
@@ -235,9 +285,9 @@ def create_features(silver_df):
         .sort_values("price_usd", ascending=False)
     )
 
-    print(avg_price.head(10).to_string(index=False))
+    logger.info("\n%s", avg_price.head(10).to_string(index=False))
 
-    print("\n--- Metacritic promedio por género ---")
+    logger.info("\n--- Metacritic promedio por género ---")
 
     avg_metacritic = (
         df.groupby("Genres", as_index=False)["Metacritic_score"]
@@ -245,7 +295,7 @@ def create_features(silver_df):
         .sort_values("Metacritic_score", ascending=False)
     )
 
-    print(avg_metacritic.head(10).to_string(index=False))
+    logger.info("\n%s", avg_metacritic.head(10).to_string(index=False))
 
     # =====================================
     # Binning
@@ -255,29 +305,21 @@ def create_features(silver_df):
         df["price_usd"],
         bins=[0, 10, 30, 60, float("inf")],
         labels=["Bajo", "Medio", "Alto", "Premium"],
-        include_lowest=True
+        include_lowest=True,
     )
 
-    print("\nClasificación por rango de precio:")
-    print(df[["price_usd", "price_range"]].head())
-    
-    price_counts = (
-            df["price_range"]
-            .value_counts()
-            .sort_index()
-        )
-    
-    print(price_counts)
-    
-    import matplotlib.pyplot as plt
-
-    price_counts = (
-    df["price_range"]
-    .value_counts()
-    .sort_index()
+    logger.info(
+        "\nClasificación por rango de precio:\n%s",
+        df[["price_usd", "price_range"]].head(),
     )
 
-    plt.figure(figsize=(8,5))
+    price_counts = df["price_range"].value_counts().sort_index()
+
+    logger.info("\n%s", price_counts)
+
+    price_counts = df["price_range"].value_counts().sort_index()
+
+    plt.figure(figsize=(8, 5))
 
     plt.bar(price_counts.index.astype(str), price_counts.values)
 
@@ -285,17 +327,14 @@ def create_features(silver_df):
     plt.xlabel("Rango de precio (USD)")
     plt.ylabel("Cantidad de juegos")
 
-# Mostrar la cantidad encima de cada barra
+    # Mostrar la cantidad encima de cada barra
     for i, v in enumerate(price_counts.values):
         plt.text(i, v, str(v), ha="center", va="bottom")
 
     plt.tight_layout()
     plt.show()
-    
-    
-    return df
 
-    
+    return df
 
 
 def normalize_features(silver_df: pd.DataFrame) -> pd.DataFrame:
@@ -306,27 +345,17 @@ def normalize_features(silver_df: pd.DataFrame) -> pd.DataFrame:
     df = silver_df.copy()
 
     # ==========================
-    # Conversión de precio
-    # ==========================
-
-    # Precio original viene en centavos
-    # df["price_usd"] = df["price"] / 100
-
-    # ==========================
     # Normalización
     # ==========================
 
     scaler = MinMaxScaler()
 
-    df["price_norm"] = scaler.fit_transform(
-        df[["price_usd"]]
-    )
+    df["price_norm"] = scaler.fit_transform(df[["price_usd"]])
 
-    print("\n--- Normalización de Precio ---")
-    print(df[["price", "price_usd", "price_norm"]].head())
+    logger.info("\n--- Normalización de Precio ---")
+    logger.info("\n%s", df[["price", "price_usd", "price_norm"]].head())
 
     return df
-
 
 
 def optimize_memory(silver_df: pd.DataFrame) -> pd.DataFrame:
@@ -338,12 +367,12 @@ def optimize_memory(silver_df: pd.DataFrame) -> pd.DataFrame:
     df = silver_df.copy()
 
     def memory_mb(dataframe):
-        return dataframe.memory_usage(deep=True).sum() / (1024 ** 2)
+        return dataframe.memory_usage(deep=True).sum() / (1024**2)
 
     before = memory_mb(df)
 
-    print("\n--- Optimización de Memoria ---")
-    print(f"Memoria antes: {before:.2f} MB")
+    logger.info("\n--- Optimización de Memoria ---")
+    logger.info(f"Memoria antes: {before:.2f} MB")
 
     # ==========================
     # Downcasting enteros
@@ -368,10 +397,7 @@ def optimize_memory(silver_df: pd.DataFrame) -> pd.DataFrame:
 
     for col in integer_columns:
         if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col],
-                downcast="integer"
-            )
+            df[col] = pd.to_numeric(df[col], downcast="integer")
 
     # ==========================
     # Downcasting float
@@ -389,10 +415,7 @@ def optimize_memory(silver_df: pd.DataFrame) -> pd.DataFrame:
 
     for col in float_columns:
         if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col],
-                downcast="float"
-            )
+            df[col] = pd.to_numeric(df[col], downcast="float")
 
     # ==========================
     # Variables categóricas
@@ -411,11 +434,10 @@ def optimize_memory(silver_df: pd.DataFrame) -> pd.DataFrame:
 
     after = memory_mb(df)
 
-    print(f"Memoria después: {after:.2f} MB")
-    print(f"Ahorro: {(1 - after / before) * 100:.2f}%")
+    logger.info(f"Memoria después: {after:.2f} MB")
+    logger.info(f"Ahorro: {(1 - after / before) * 100:.2f}%")
 
     return df
-
 
 
 def plot_memory_optimization(
@@ -427,71 +449,40 @@ def plot_memory_optimization(
     antes y después del downcasting.
     """
 
-    mem_before = (
-        before_df.memory_usage(deep=True)[1:] / 1024
-    )
+    mem_before = before_df.memory_usage(deep=True)[1:] / 1024
 
-    mem_after = (
-        after_df.memory_usage(deep=True)[1:] / 1024
-    )
+    mem_after = after_df.memory_usage(deep=True)[1:] / 1024
 
     total_before = before_df.memory_usage(deep=True).sum()
     total_after = after_df.memory_usage(deep=True).sum()
 
-    saving = (
-        1 - (total_after / total_before)
-    ) * 100
+    saving = (1 - (total_after / total_before)) * 100
 
     x = np.arange(len(mem_before.index))
     width = 0.35
 
     fig, ax = plt.subplots(figsize=(14, 5))
 
-    ax.bar(
-        x - width / 2,
-        mem_before,
-        width,
-        label="Antes"
-    )
+    ax.bar(x - width / 2, mem_before, width, label="Antes")
 
-    ax.bar(
-        x + width / 2,
-        mem_after,
-        width,
-        label="Después"
-    )
+    ax.bar(x + width / 2, mem_after, width, label="Después")
 
     ax.set_xticks(x)
-    ax.set_xticklabels(
-        mem_before.index,
-        rotation=45,
-        ha="right"
-    )
+    ax.set_xticklabels(mem_before.index, rotation=45, ha="right")
 
     ax.set_ylabel("KB")
 
-    ax.set_title(
-        f"Uso de memoria por columna\n"
-        f"Ahorro total: {saving:.2f}%"
-    )
+    ax.set_title(f"Uso de memoria por columna\n" f"Ahorro total: {saving:.2f}%")
 
     ax.legend()
 
     plt.tight_layout()
 
-    plt.savefig(
-        "data/silver/memory_optimization.png",
-        dpi=300
-    )
+    plt.savefig("data/silver/memory_optimization.png", dpi=300)
 
     plt.close()
 
-    print(
-        "Gráfico guardado en:"
-        " data/silver/memory_optimization.png"
-    )
-
-
+    logger.info("Gráfico guardado en: data/silver/memory_optimization.png")
 
 
 def benchmark_vectorization(silver_df: pd.DataFrame) -> None:
@@ -500,7 +491,7 @@ def benchmark_vectorization(silver_df: pd.DataFrame) -> None:
     y una operación vectorizada.
     """
 
-    print("\n--- Benchmark de Vectorización ---")
+    logger.info("\n--- Benchmark de Vectorización ---")
 
     df = silver_df[["price", "discount"]].copy()
 
@@ -512,7 +503,7 @@ def benchmark_vectorization(silver_df: pd.DataFrame) -> None:
     result_loop = []
 
     for row in df.itertuples(index=False):
-        value =  row[0] * (1 - row[1])
+        value = row[0] * (1 - row[1])
         result_loop.append(value)
 
     t_loop = time.perf_counter() - t0
@@ -522,10 +513,7 @@ def benchmark_vectorization(silver_df: pd.DataFrame) -> None:
     # =====================
     t0 = time.perf_counter()
 
-    result_apply = df.apply(
-        lambda r: r["price"] * (1 - r["discount"]),
-        axis=1
-    )
+    result_apply = df.apply(lambda r: r["price"] * (1 - r["discount"]), axis=1)
 
     t_apply = time.perf_counter() - t0
 
@@ -534,27 +522,16 @@ def benchmark_vectorization(silver_df: pd.DataFrame) -> None:
     # =====================
     t0 = time.perf_counter()
 
-    result_vector = (
-        df["price"] * (1 - df["discount"])
-    )
+    result_vector = df["price"] * (1 - df["discount"])
 
     t_vector = time.perf_counter() - t0
 
-    print(f"Loop:        {t_loop:.4f} s")
-    print(f"Apply:       {t_apply:.4f} s")
-    print(f"Vectorizado: {t_vector:.4f} s")
+    logger.info(f"Loop:        {t_loop:.4f} s")
+    logger.info(f"Apply:       {t_apply:.4f} s")
+    logger.info(f"Vectorizado: {t_vector:.4f} s")
 
-    print(
-        f"Speedup Loop → Vectorizado: "
-        f"{t_loop / t_vector:.1f}x"
-    )
+    logger.info(f"Speedup Loop → Vectorizado: {t_loop / t_vector:.1f}x")
 
-    print(
-        f"Speedup Apply → Vectorizado: "
-        f"{t_apply / t_vector:.1f}x"
-    )
+    logger.info(f"Speedup Apply → Vectorizado: {t_apply / t_vector:.1f}x")
 
-    print(
-        "Resultados iguales:",
-        np.allclose(result_loop, result_vector)
-    )
+    logger.info(f"Resultados iguales: {np.allclose(result_loop, result_vector)}")

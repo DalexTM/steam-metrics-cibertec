@@ -1,106 +1,107 @@
+import os
+import logging
 import pandas as pd
-# Importamos las funciones del archivo de calidad
-import data_quality
-import schema_validation
+from src.silver import data_quality, schema_validation
+
+carpeta_logs = "logs"
+os.makedirs(carpeta_logs, exist_ok=True)
+ruta_log = os.path.join(carpeta_logs, "synthetic_ingest.log")
+
+logger = logging.getLogger("synthetic_ingest")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    fh = logging.FileHandler(ruta_log, encoding="utf-8")
+    fh.setFormatter(formatter)
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
 
 
 def main():
-    print("========================================")
-    print("INICIANDO PIPELINE: BRONZE -> SILVER")
-    print("========================================")
+    logger.info("========================================")
+    logger.info("INICIANDO PIPELINE: BRONZE -> SILVER")
+    logger.info("========================================")
 
     # 1. Cargar datos Bronze
-    print("\n[1/14] Cargando archivos Parquet desde Bronze...")
+    logger.info("\n[1/14] Cargando archivos Parquet desde Bronze...")
     metacritic = pd.read_parquet("data/bronze/bronze_metacritic.parquet")
     steamspy = pd.read_parquet("data/bronze/bronze_steamspy.parquet")
-    
-    print("===== Dimensiones de los datasets =====")
-    print(f"Metacritic: {metacritic.shape[0]:,} filas y {metacritic.shape[1]} columnas")
-    print(f"SteamSpy: {steamspy.shape[0]:,} filas y {steamspy.shape[1]} columnas")
+
+    logger.info("===== Dimensiones de los datasets =====")
+    logger.info(
+        f"Metacritic: {metacritic.shape[0]:,} filas y {metacritic.shape[1]} columnas"
+    )
+    logger.info(f"SteamSpy: {steamspy.shape[0]:,} filas y {steamspy.shape[1]} columnas")
 
     # 2. Estandarizar columnas
-    print("\n[2/14] Estandarizando nombres de columnas...")
+    logger.info("\n[2/14] Estandarizando nombres de columnas...")
     metacritic = data_quality.standardize_columns(metacritic)
 
-
     # 3. Eliminar duplicados
-    print("\n[3/14] Eliminando registros duplicados...")
-    metacritic = data_quality.remove_duplicates(
-    metacritic,
-    "appid"
-    )
+    logger.info("\n[3/14] Eliminando registros duplicados...")
+    metacritic = data_quality.remove_duplicates(metacritic, "appid")
 
-    steamspy = data_quality.remove_duplicates(
-    steamspy,
-    "appid"
-    )
-
+    steamspy = data_quality.remove_duplicates(steamspy, "appid")
 
     # 4. Validar e Integrar
-    print("\n[4/14] Validando llaves e integrando datasets...")
+    logger.info("\n[4/14] Validando llaves e integrando datasets...")
     silver = data_quality.validate_and_merge(metacritic, steamspy)
 
     # 5. Limpieza de calidad sobre el dataset integrado
-    print("\n[5/14] Ejecutando limpieza de nombres y caracteres...")
+    logger.info("\n[5/14] Ejecutando limpieza de nombres y caracteres...")
     silver = data_quality.clean_game_names(silver)
 
-
     # 6. Estandarización de tipos de datos
-    print("Tipos de datos antes de la estandarización:")
-    print(silver.dtypes)
-    print("\n[6/14] Estandarizando tipos de datos...")
+    logger.info("Tipos de datos antes de la estandarización:\n%s", silver.dtypes)
+    logger.info("\n[6/14] Estandarizando tipos de datos...")
     silver = data_quality.standardize_data_types(silver)
-    print(silver.dtypes)
+    logger.info("\n%s", silver.dtypes)
 
+    # 6.5. Imputación KNN de Metacritic
+    logger.info("\n[6.5/14] Imputando Metacritic_score mediante KNNImputer...")
+    silver = data_quality.impute_missing_scores(silver)
 
     # 7. Feature Engineering
-    print("\n[7/14] Creando variables derivadas...")
+    logger.info("\n[7/14] Creando variables derivadas...")
     silver = data_quality.create_features(silver)
 
     # 8. Pandera
-    print("\n[8/14] Validando esquema Pandera...")
+    logger.info("\n[8/14] Validando esquema Pandera...")
     silver = schema_validation.validate_schema(silver)
 
-
     # 9. Normalizando variables
-    print("\n[9/14] Normalizando variables...")
+    logger.info("\n[9/14] Normalizando variables...")
     silver = data_quality.normalize_features(silver)
 
-
     # 10. Optimización de memoria
-    print("\n[10/14] Optimizando memoria...")
+    logger.info("\n[10/14] Optimizando memoria...")
 
     silver_before = silver.copy()
     silver = data_quality.optimize_memory(silver)
 
-
-   # 11. Benchmark de vectorización
-    print("\n[11/14] Ejecutando benchmark de vectorización...")
+    # 11. Benchmark de vectorización
+    logger.info("\n[11/14] Ejecutando benchmark de vectorización...")
     data_quality.benchmark_vectorization(silver)
 
-
     # 12. Gráfico de optimización
-    print("\n[12/14] Generando gráfico de memoria...")
+    logger.info("\n[12/14] Generando gráfico de memoria...")
 
-    data_quality.plot_memory_optimization(
-    silver_before,
-    silver
-    )
-
+    data_quality.plot_memory_optimization(silver_before, silver)
 
     # 13. Control de calidad final (Auditoría)
-    print("\n[13/14] Ejecutando auditoría final...")
+    logger.info("\n[13/14] Ejecutando auditoría final...")
     data_quality.verify_final_quality(silver)
 
-
     # 14. Guardar datos en Silver
-    print("\n[14/14] Guardando dataset limpio en Capa Silver...")
+    logger.info("\n[14/14] Guardando dataset limpio en Capa Silver...")
     silver.to_parquet("data/silver/silver.parquet", index=False)
 
+    logger.info("\n========================================")
+    logger.info("PIPELINE FINALIZADO CON ÉXITO")
+    logger.info("========================================")
 
-    print("\n========================================")
-    print("PIPELINE FINALIZADO CON ÉXITO")
-    print("========================================")
- 
+
 if __name__ == "__main__":
     main()
