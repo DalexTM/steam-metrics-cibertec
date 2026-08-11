@@ -1,6 +1,7 @@
 import os
 import logging
 from src.bronze.ingest_steamspy import ingesta_datos_steamspy
+from src.bronze.ingest_metacritic import ingesta_datos_metacritic
 from src.bronze.transform_steamspy_parquet import procesar_raw_a_parquet
 from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
 from src.silver.synthetic_ingest import main as procesar_bronze_a_silver
@@ -23,6 +24,11 @@ if not logger.handlers:
 
 def mostrar_menu():
     logger.info("Iniciando APP Steam Metrics.")
+    try:
+        ingesta_datos_metacritic()
+    except Exception as err:
+        logger.error(f"No se pudo verificar o descargar el CSV de Metacritic: {err}")
+
     while True:
         print("\n============================================")
         print("    SISTEMA DE METRICAS STEAM - CIBERTEC")
@@ -57,8 +63,9 @@ def mostrar_menu():
 
             elif opcion == "3":
                 logger.info(
-                    "Iniciando pipeline nativo: Transformación de Metacritic CSV a ParquetF..."
+                    "Iniciando pipeline nativo: Transformación de Metacritic CSV a Parquet..."
                 )
+                ingesta_datos_metacritic()
                 procesar_csv_a_parquet()
                 logger.info(
                     "Pipeline finalizado: Transformación a Parquet completada con éxito."
