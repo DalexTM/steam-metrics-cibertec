@@ -1,5 +1,7 @@
 # 🎮 Proyecto: Sistema de Métricas e Insights de Steam y Metacritic
 
+Instalar uv y ejecutar uv run main.py para que se descarguen las dependencias y se abra la app.
+
 ## 1. Descripción del Proyecto
 Este proyecto consiste en la creación de una plataforma de datos que centraliza, procesa y analiza la información de miles de videojuegos de PC. La idea principal es unir los datos de rendimiento en tiempo real de **SteamSpy** con las calificaciones y detalles de **Metacritic**, permitiendo evaluar qué factores hacen que un videojuego sea exitoso en el mercado actual.
 
