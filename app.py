@@ -54,6 +54,33 @@ st.markdown(
 )
 
 
+PALETA_PRECIOS = {
+    "Gratis ($0)": "#00ff88",
+    "Económico ($0.01 - $9.99)": "#00d2ff",
+    "Estándar ($10.00 - $29.99)": "#ffc107",
+    "Premium ($30.00+)": "#ff3366",
+}
+
+PALETA_DISCREPANCIA = {
+    "Infravalorado por la Crítica": "#00ff88",
+    "Consenso Crítica vs Comunidad": "#00d2ff",
+    "Sobrevalorado por la Crítica": "#ff3366",
+}
+
+PALETA_NEON_DISCRETA = [
+    "#00ff88",
+    "#00d2ff",
+    "#ffc107",
+    "#ff3366",
+    "#b537f2",
+    "#00e5ff",
+    "#ff9100",
+    "#76ff03",
+    "#ff1744",
+    "#e040fb",
+]
+
+
 @st.cache_data
 def cargar_datos_gold() -> pd.DataFrame | None:
     ruta_gold = os.path.join("data", "gold", "steam_metrics_gold.parquet")
@@ -222,71 +249,128 @@ def main():
 
         if total_juegos > 0:
             assert isinstance(df_filtrado, pd.DataFrame)
+            df_scatter = df_filtrado.loc[
+                (df_filtrado["total_reviews"] >= 5)
+                & (df_filtrado["estimated_revenue_usd"] > 0)
+            ].copy()
+            df_scatter["estimated_revenue_milli"] = (
+                df_scatter["estimated_revenue_usd"] / 1_000_000
+            ).round(2)
+
             fig_scatter_ventas = px.scatter(
-                df_filtrado,
+                df_scatter,
                 x="Metacritic_score",
-                y="estimated_revenue_usd",
+                y="estimated_revenue_milli",
                 size="Peak_CCU",
                 color="price_category",
+                color_discrete_map=PALETA_PRECIOS,
                 hover_name="name",
                 hover_data={"price_usd": True, "Peak_CCU": True, "approval_rate": True},
-                title="Metacritic Score vs Ingresos Estimados USD (Tamaño = Peak CCU)",
+                title="Metacritic Score vs Ingresos Estimados (Millones USD) - Tamaño = Peak CCU",
                 labels={
                     "Metacritic_score": "Calificación Metacritic",
-                    "estimated_revenue_usd": "Ingresos Estimados (USD)",
+                    "estimated_revenue_milli": "Ingresos Estimados (Millones USD)",
                     "price_category": "Rango de Precio",
                 },
                 template="plotly_dark",
+                size_max=48,
+                opacity=0.85,
+                log_y=True,
+            )
+            fig_scatter_ventas.update_traces(
+                marker=dict(line=dict(width=0.6, color="#0e141d"))
+            )
+            fig_scatter_ventas.update_xaxes(range=[40, 100])
+            fig_scatter_ventas.update_yaxes(
+                tickvals=[0.01, 0.1, 1, 10, 100, 1000, 4000],
+                ticktext=[
+                    "$0.01M",
+                    "$0.1M",
+                    "$1M",
+                    "$10M",
+                    "$100M",
+                    "$1,000M",
+                    "$4,000M",
+                ],
             )
             fig_scatter_ventas.update_layout(
-                height=500, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
+                height=530, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
             )
             st.plotly_chart(fig_scatter_ventas, use_container_width=True)
 
             col_sub1, col_sub2 = st.columns(2)
 
             with col_sub1:
-                top_ventas = df_filtrado.sort_values(
-                    by="estimated_revenue_usd", ascending=False
-                ).head(10)
+                top_ventas = (
+                    df_filtrado.sort_values(by="estimated_revenue_usd", ascending=False)
+                    .head(10)
+                    .copy()
+                )
+                top_ventas["Texto_Ventas"] = top_ventas["estimated_revenue_usd"].apply(
+                    lambda x: (
+                        f"${x / 1_000_000_000:.1f}B"
+                        if x >= 1_000_000_000
+                        else f"${x / 1_000_000:.1f}M"
+                    )
+                )
+
                 fig_top_ventas = px.bar(
                     top_ventas,
                     x="estimated_revenue_usd",
                     y="name",
                     orientation="h",
                     color="Metacritic_score",
+                    color_continuous_scale="Viridis",
+                    text="Texto_Ventas",
                     title="Top 10 Videojuegos por Ingresos Estimados (USD)",
                     labels={
                         "estimated_revenue_usd": "Ingresos Estimados (USD)",
                         "name": "Videojuego",
+                        "Metacritic_score": "Metacritic Score",
                     },
                     template="plotly_dark",
                 )
+                fig_top_ventas.update_traces(textposition="outside", cliponaxis=False)
                 fig_top_ventas.update_layout(
                     yaxis={"categoryorder": "total ascending"},
-                    height=400,
+                    height=450,
+                    margin=dict(r=80),
                     paper_bgcolor="#171d25",
                     plot_bgcolor="#171d25",
                 )
                 st.plotly_chart(fig_top_ventas, use_container_width=True)
 
             with col_sub2:
-                top_ccu = df_filtrado.sort_values(by="Peak_CCU", ascending=False).head(
-                    10
+                top_ccu = (
+                    df_filtrado.sort_values(by="Peak_CCU", ascending=False)
+                    .head(10)
+                    .copy()
                 )
+                top_ccu["Texto_CCU"] = top_ccu["Peak_CCU"].apply(
+                    lambda x: f"{int(x):,}"
+                )
+
                 fig_top_ccu = px.bar(
                     top_ccu,
                     x="Peak_CCU",
                     y="name",
                     orientation="h",
                     color="Metacritic_score",
+                    color_continuous_scale="Viridis",
+                    text="Texto_CCU",
                     title="Top 10 Videojuegos por Jugadores Simultáneos en Hora Pico",
-                    labels={"Peak_CCU": "Peak CCU", "name": "Videojuego"},
+                    labels={
+                        "Peak_CCU": "Peak CCU",
+                        "name": "Videojuego",
+                        "Metacritic_score": "Metacritic Score",
+                    },
                     template="plotly_dark",
                 )
+                fig_top_ccu.update_traces(textposition="outside", cliponaxis=False)
                 fig_top_ccu.update_layout(
                     yaxis={"categoryorder": "total ascending"},
-                    height=400,
+                    height=450,
+                    margin=dict(r=80),
                     paper_bgcolor="#171d25",
                     plot_bgcolor="#171d25",
                 )
@@ -309,6 +393,7 @@ def main():
                 x="Metacritic_score",
                 y="approval_rate",
                 color="discrepancy_category",
+                color_discrete_map=PALETA_DISCREPANCIA,
                 hover_name="name",
                 hover_data={"score_gap": True, "total_reviews": True},
                 title="Metacritic Score vs Tasa de Aprobación de la Comunidad (%)",
@@ -346,6 +431,8 @@ def main():
                 conteo_discrepancia,
                 names="Categoria",
                 values="Cantidad",
+                color="Categoria",
+                color_discrete_map=PALETA_DISCREPANCIA,
                 title="Distribución de Discrepancia Crítica vs Comunidad",
                 template="plotly_dark",
                 hole=0.4,
@@ -378,15 +465,33 @@ def main():
                 .head(15)
             )
 
+            df_generos_ingresos = generos_agg.copy()
+            df_generos_ingresos["Texto_Ingresos"] = df_generos_ingresos[
+                "Ingresos_Totales"
+            ].apply(
+                lambda x: (
+                    f"${x / 1_000_000_000:.1f}B"
+                    if x >= 1_000_000_000
+                    else f"${x / 1_000_000:.1f}M"
+                )
+            )
+
+            df_generos_ccu = generos_agg.copy()
+            df_generos_ccu["Texto_CCU"] = df_generos_ccu["Peak_CCU_Promedio"].apply(
+                lambda x: f"{int(x):,}"
+            )
+
             col_g1, col_g2 = st.columns(2)
 
             with col_g1:
                 fig_generos_ingresos = px.bar(
-                    generos_agg,
+                    df_generos_ingresos,
                     x="Ingresos_Totales",
                     y="Genres",
                     orientation="h",
                     color="Ingresos_Totales",
+                    color_continuous_scale="Viridis",
+                    text="Texto_Ingresos",
                     title="Top 15 Géneros más Rentables (Ingresos Estimados USD)",
                     labels={
                         "Ingresos_Totales": "Ingresos Estimados (USD)",
@@ -394,9 +499,13 @@ def main():
                     },
                     template="plotly_dark",
                 )
+                fig_generos_ingresos.update_traces(
+                    textposition="outside", cliponaxis=False
+                )
                 fig_generos_ingresos.update_layout(
                     yaxis={"categoryorder": "total ascending"},
-                    height=450,
+                    height=520,
+                    margin=dict(r=80),
                     paper_bgcolor="#171d25",
                     plot_bgcolor="#171d25",
                 )
@@ -404,11 +513,13 @@ def main():
 
             with col_g2:
                 fig_generos_ccu = px.bar(
-                    generos_agg,
+                    df_generos_ccu,
                     x="Peak_CCU_Promedio",
                     y="Genres",
                     orientation="h",
                     color="Peak_CCU_Promedio",
+                    color_continuous_scale="Viridis",
+                    text="Texto_CCU",
                     title="Top 15 Géneros por Promedio de Jugadores Simultáneos (Peak CCU)",
                     labels={
                         "Peak_CCU_Promedio": "Peak CCU Promedio",
@@ -416,9 +527,11 @@ def main():
                     },
                     template="plotly_dark",
                 )
+                fig_generos_ccu.update_traces(textposition="outside", cliponaxis=False)
                 fig_generos_ccu.update_layout(
                     yaxis={"categoryorder": "total ascending"},
-                    height=450,
+                    height=520,
+                    margin=dict(r=70),
                     paper_bgcolor="#171d25",
                     plot_bgcolor="#171d25",
                 )
@@ -432,6 +545,7 @@ def main():
                 x="Genres",
                 y="price_usd",
                 color="Genres",
+                color_discrete_sequence=PALETA_NEON_DISCRETA,
                 title="Distribución y Dispersión de Precios (USD) por Top 10 Géneros",
                 labels={"price_usd": "Precio (USD)", "Genres": "Género"},
                 template="plotly_dark",
@@ -439,7 +553,7 @@ def main():
             )
             fig_box_precio.update_layout(
                 showlegend=False,
-                height=450,
+                height=460,
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )

@@ -173,7 +173,7 @@ El Dashboard se encuentra dividido en **5 Pestañas de Análisis**, ofreciendo r
 ## 🌐 6. Despliegue en la Nube (Streamlit Cloud)
 
 El proyecto se encuentra desplegado en la nube pública de Streamlit Cloud:
-* **Enlace del Dashboard en Vivo:** `[Insertar Enlace de Streamlit Cloud Aquí]`
+* **Enlace del Dashboard en Vivo:** `https://steam-metrics-cibertec.streamlit.app/`
 * **Repositorio Público de GitHub:** `https://github.com/DalexTM/steam-metrics-cibertec`
 
 ---
@@ -184,4 +184,3 @@ El proyecto se encuentra desplegado en la nube pública de Streamlit Cloud:
 * ✅ **Sin credenciales expuestas:** Libre de archivos `.env` o llaves privadas.
 * ✅ **Código Modular y Limpio:** Separación estricta en carpetas `src/bronze`, `src/silver`, `src/gold`.
 * ✅ **Trazabilidad mediante Logs:** Bitácoras continuas en `logs/*.log` con formato estructurado `%(asctime)s [%(levelname)s] %(message)s`.
-* ✅ **Optimización Extrema de Datos:** Dataset Gold comprimido de 73 MB a **5.05 MB** en Parquet para carga instantánea en memoria RAM (< 15 MB).
