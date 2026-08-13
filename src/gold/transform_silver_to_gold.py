@@ -6,6 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 carpeta_logs = "logs"
+os.makedirs(carpeta_logs, exist_ok=True)
 ruta_log = os.path.join(carpeta_logs, "transform_silver_to_gold.log")
 
 logger = logging.getLogger("transform_silver_to_gold")
@@ -61,7 +62,7 @@ def categorizar_discrepancia(gap: float) -> str:
 
 def procesar_silver_a_gold():
     logger.info("========================================")
-    logger.info("INICIANDO PIPELINE: SILVER -> GOLD")
+    logger.info("INICIANDO PIPELINE: SILVER -> GOLD (OPTIMIZADO)")
     logger.info("========================================")
 
     logger.info(f"Cargando dataset Silver desde: {ARCHIVO_ENTRADA}")
@@ -69,38 +70,82 @@ def procesar_silver_a_gold():
     logger.info(f"Registros cargados: {len(df):,} filas y {len(df.columns)} columnas.")
 
     logger.info("Calculando estimaciones comerciales de ventas e ingresos...")
-    df["estimated_owners_avg"] = df["owners"].apply(calcular_duenos_promedio)
-    df["estimated_revenue_usd"] = (df["estimated_owners_avg"] * df["price_usd"]).round(
-        2
+    df["estimated_owners_avg"] = (
+        df["owners"].apply(calcular_duenos_promedio).astype(np.float32)
+    )
+    df["estimated_revenue_usd"] = (
+        (df["estimated_owners_avg"] * df["price_usd"]).round(2).astype(np.float32)
     )
 
     logger.info("Asegurando consistencia en tasa de aprobación y discrepancia...")
     total_rev = df["positive"] + df["negative"]
     df["total_reviews"] = total_rev.astype(np.int32)
-    df["approval_rate"] = np.where(
-        total_rev > 0,
-        (df["positive"] / total_rev) * 100.0,
-        df["approval_rate"].fillna(0.0),
-    ).round(2)
+    df["approval_rate"] = (
+        np.where(
+            total_rev > 0,
+            (df["positive"] / total_rev) * 100.0,
+            df["approval_rate"].fillna(0.0),
+        )
+        .round(2)
+        .astype(np.float32)
+    )
 
-    df["Metacritic_score"] = df["Metacritic_score"].round(2)
-    df["score_gap"] = (df["approval_rate"] - df["Metacritic_score"]).round(2)
-    df["discrepancy_category"] = df["score_gap"].apply(categorizar_discrepancia)
+    df["Metacritic_score"] = df["Metacritic_score"].round(2).astype(np.float32)
+    df["score_gap"] = (
+        (df["approval_rate"] - df["Metacritic_score"]).round(2).astype(np.float32)
+    )
+    df["discrepancy_category"] = (
+        df["score_gap"].apply(categorizar_discrepancia).astype("category")
+    )
 
-    logger.info("Calculando horas promedio de juego y rangos...")
-    df["playtime_hours"] = (df["Average_playtime_forever"] / 60.0).round(2)
-
-    logger.info("Categorizando estrategia de precios...")
+    logger.info("Calculando horas promedio de juego y categorizando precio...")
+    df["playtime_hours"] = (
+        (df["Average_playtime_forever"] / 60.0).round(2).astype(np.float32)
+    )
     df["is_free"] = df["price_usd"] == 0.0
-    df["price_category"] = df["price_usd"].apply(categorizar_precio)
+    df["price_category"] = df["price_usd"].apply(categorizar_precio).astype("category")
 
     logger.info("Normalizando géneros y categorías de juego...")
-    df["Genres"] = df["Genres"].astype(str).str.strip()
-    df["Categories"] = df["Categories"].astype(str).str.strip()
+    df["Genres"] = df["Genres"].astype(str).str.strip().astype("category")
+    df["Categories"] = df["Categories"].astype(str).str.strip().astype("category")
+
+    columnas_seleccionadas = [
+        "appid",
+        "name",
+        "release_year",
+        "Release_date",
+        "Metacritic_score",
+        "approval_rate",
+        "score_gap",
+        "discrepancy_category",
+        "positive",
+        "negative",
+        "total_reviews",
+        "price_usd",
+        "price_category",
+        "is_free",
+        "Peak_CCU",
+        "playtime_hours",
+        "estimated_owners_avg",
+        "estimated_revenue_usd",
+        "Genres",
+        "Categories",
+        "developer",
+        "publisher",
+        "Windows",
+        "Mac",
+        "Linux",
+    ]
+
+    cols_existentes = [c for c in columnas_seleccionadas if c in df.columns]
+    logger.info(
+        f"Filtrando columnas necesarias para Gold: {len(cols_existentes)} columnas conservadas."
+    )
+    df_gold = df[cols_existentes]
 
     logger.info("Escribiendo archivo Parquet en capa Gold...")
-
-    tabla = pa.Table.from_pandas(df, preserve_index=False)
+    os.makedirs(DIRECTORIO_SALIDA, exist_ok=True)
+    tabla = pa.Table.from_pandas(df_gold, preserve_index=False)
     pq.write_table(tabla, ARCHIVO_SALIDA, compression="snappy")
 
     tamano_mb = os.path.getsize(ARCHIVO_SALIDA) / (1024 * 1024)
