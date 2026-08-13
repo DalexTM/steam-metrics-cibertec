@@ -220,5 +220,6 @@ __marimo__/
 # Excluir la persistencia de las capas procesadas en local
 data/bronze/*.parquet
 data/silver/*.parquet
+data/gold/*.parquet
 data/raw/metacritic/*.csv
 data/raw/steamspy/data/*.avro

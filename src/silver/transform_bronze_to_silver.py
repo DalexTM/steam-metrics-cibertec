@@ -5,9 +5,9 @@ from src.silver import data_quality, schema_validation
 
 carpeta_logs = "logs"
 os.makedirs(carpeta_logs, exist_ok=True)
-ruta_log = os.path.join(carpeta_logs, "synthetic_ingest.log")
+ruta_log = os.path.join(carpeta_logs, "transform_bronze_to_silver.log")
 
-logger = logging.getLogger("synthetic_ingest")
+logger = logging.getLogger("transform_bronze_to_silver")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")

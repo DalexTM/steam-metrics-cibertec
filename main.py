@@ -4,7 +4,8 @@ from src.bronze.ingest_steamspy import ingesta_datos_steamspy
 from src.bronze.ingest_metacritic import ingesta_datos_metacritic
 from src.bronze.transform_steamspy_parquet import procesar_raw_a_parquet
 from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
-from src.silver.synthetic_ingest import main as procesar_bronze_a_silver
+from src.silver.transform_bronze_to_silver import main as procesar_bronze_a_silver
+from src.gold.transform_silver_to_gold import procesar_silver_a_gold
 
 carpeta_logs = "logs"
 os.makedirs(carpeta_logs, exist_ok=True)
@@ -37,6 +38,7 @@ def mostrar_menu():
         print("2. Transformar SteamSpy Avro a Parquet")
         print("3. Transformar Metacritic CSV a Parquet")
         print("4. Integración y Limpieza (Bronze -> Silver)")
+        print("5. Consolidación de Datamart (Silver -> Gold)")
         print("0. Salir")
         print("============================================")
 
@@ -78,6 +80,15 @@ def mostrar_menu():
                 procesar_bronze_a_silver()
                 logger.info(
                     "Pipeline finalizado: Procesamiento Bronze a Silver completado con éxito."
+                )
+
+            elif opcion == "5":
+                logger.info(
+                    "Iniciando pipeline nativo: Consolidación de Datamart (Silver -> Gold)..."
+                )
+                procesar_silver_a_gold()
+                logger.info(
+                    "Pipeline finalizado: Procesamiento Silver a Gold completado con éxito."
                 )
 
             elif opcion == "0":
