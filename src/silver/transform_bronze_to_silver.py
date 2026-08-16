@@ -19,7 +19,7 @@ if not logger.handlers:
     logger.addHandler(sh)
 
 
-def main():
+def procesar_bronze_a_silver():
     logger.info("========================================")
     logger.info("INICIANDO PIPELINE: BRONZE -> SILVER")
     logger.info("========================================")
@@ -104,4 +104,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    procesar_bronze_a_silver()
