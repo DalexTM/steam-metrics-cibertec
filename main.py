@@ -4,7 +4,7 @@ from src.bronze.ingest_steamspy import ingesta_datos_steamspy
 from src.bronze.ingest_metacritic import ingesta_datos_metacritic
 from src.bronze.transform_steamspy_parquet import procesar_raw_a_parquet
 from src.bronze.transform_metacritic_parquet import procesar_csv_a_parquet
-from src.silver.transform_bronze_to_silver import main as procesar_bronze_a_silver
+from src.silver.transform_bronze_to_silver import procesar_bronze_a_silver
 from src.gold.transform_silver_to_gold import procesar_silver_a_gold
 
 carpeta_logs = "logs"
