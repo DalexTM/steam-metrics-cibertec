@@ -237,14 +237,16 @@ def main():
             "3. Géneros más Rentables",
             "4. Satisfacción vs Tiempo de Juego",
             "5. Estrategia de precios",
-            "6. Categorías vs Peak CCU",
+            "6. Géneros vs Peak CCU",
             "7. Explorador de Datos",
             "8. Correlaciones",
         ]
     )
 
     with tab1:
-        st.subheader("Relación entre Calificación de la Crítica y Éxito Comercial")
+        st.subheader(
+            "¿Existe una relación directa entre la calificación de la crítica y el éxito comercial estimado en ventas y jugadores?"
+        )
         st.write(
             "Análisis para determinar si los juegos con mejores puntajes en Metacritic logran "
             "mayores ventas estimadas e interacción en jugadores simultáneos en hora pico."
@@ -383,7 +385,7 @@ def main():
 
     with tab2:
         st.subheader(
-            "Discrepancia entre Crítica Especializada (Metacritic) y Comunidad (Steam)"
+            "¿Qué discrepancia existe entre la opinión de la crítica especializada (Metacritic) y la satisfacción de la comunidad (Reseñas de Steam)?"
         )
         st.write(
             "Comparación directa entre la nota de Metacritic y la tasa de aprobación de los jugadores de Steam "
@@ -448,7 +450,9 @@ def main():
             st.warning("No hay datos disponibles para los filtros seleccionados.")
 
     with tab3:
-        st.subheader("Análisis de Géneros más Rentables y Volumen de Jugadores")
+        st.subheader(
+            "¿Cuáles son los géneros más rentables y cuáles concentran el mayor volumen de jugadores en el mercado?"
+        )
         st.write(
             "Identificación de los géneros comerciales de mayor volumen financiero y su "
             "concentración de usuarios en el mercado."
@@ -1130,7 +1134,9 @@ def main():
 
     with tab5:
 
-        st.subheader("Estrategia de Precios")
+        st.subheader(
+            "¿Cómo se distribuyen los videojuegos en Steam según su estrategia de precios (gratuito vs. rangos comerciales)?"
+        )
         st.write(
             "Analiza cómo se distribuyen los videojuegos según su estrategia de precios, "
             "la distribución real de los precios y la relación entre precio y aprobación "
@@ -1421,27 +1427,29 @@ def main():
 
 
     with tab6:
-        st.subheader("¿Cuáles son las categorías de juego que logran retener un mayor número de usuarios simultáneos en hora pico?")
+        st.subheader(
+            "¿Cuáles son los géneros de juego que logran retener un mayor número de usuarios simultáneos en hora pico?"
+        )
         st.write(
-            "Se descomponen las categorías de cada videojuego y se calcula el **Peak CCU promedio** "
-            "por categoría. Se exige un mínimo de juegos por categoría para evitar que un solo título "
+            "Se descomponen los géneros de cada videojuego y se calcula el **Peak CCU promedio** "
+            "por género. Se exige un mínimo de juegos por género para evitar que un solo título "
             "distorsione el resultado. **Nota:** Peak CCU mide concurrencia en hora pico; no representa "
             "retención longitudinal de usuarios."
         )
 
-        df_categorias = df_filtrado.dropna(subset=["Categories", "Peak_CCU"]).copy()
-        df_categorias["Categories"] = (
-            df_categorias["Categories"]
+        df_generos_tab6 = df_filtrado.dropna(subset=["Genres", "Peak_CCU"]).copy()
+        df_generos_tab6["Genres"] = (
+            df_generos_tab6["Genres"]
             .astype(str)
             .str.split(",")
         )
-        df_categorias = df_categorias.explode("Categories")
-        df_categorias["Categories"] = df_categorias["Categories"].str.strip()
-        df_categorias = df_categorias.loc[df_categorias["Categories"] != ""]
+        df_generos_tab6 = df_generos_tab6.explode("Genres")
+        df_generos_tab6["Genres"] = df_generos_tab6["Genres"].str.strip()
+        df_generos_tab6 = df_generos_tab6.loc[df_generos_tab6["Genres"] != ""]
 
-        if not df_categorias.empty:
-            categorias_agg = (
-                df_categorias.groupby("Categories", observed=False)
+        if not df_generos_tab6.empty:
+            generos_agg_tab6 = (
+                df_generos_tab6.groupby("Genres", observed=False)
                 .agg(
                     Peak_CCU_Promedio=("Peak_CCU", "mean"),
                     Videojuegos=("appid", "nunique"),
@@ -1450,58 +1458,58 @@ def main():
                 .reset_index()
             )
 
-            # Evita que categorías presentes en muy pocos juegos dominen el ranking.
-            min_juegos_categoria = 10
-            categorias_agg = categorias_agg.loc[
-                categorias_agg["Videojuegos"] >= min_juegos_categoria
+            # Evita que géneros presentes en muy pocos juegos dominen el ranking.
+            min_juegos_genero = 10
+            generos_agg_tab6 = generos_agg_tab6.loc[
+                generos_agg_tab6["Videojuegos"] >= min_juegos_genero
             ]
-            categorias_agg = categorias_agg.sort_values(
+            generos_agg_tab6 = generos_agg_tab6.sort_values(
                 "Peak_CCU_Promedio", ascending=False
             ).head(15)
 
-            if not categorias_agg.empty:
-                categorias_agg["Etiqueta_CCU"] = categorias_agg["Peak_CCU_Promedio"].apply(
+            if not generos_agg_tab6.empty:
+                generos_agg_tab6["Etiqueta_CCU"] = generos_agg_tab6["Peak_CCU_Promedio"].apply(
                     lambda x: f"{int(x):,}"
                 )
 
-                fig_categorias = px.bar(
-                    categorias_agg.sort_values("Peak_CCU_Promedio"),
+                fig_generos = px.bar(
+                    generos_agg_tab6.sort_values("Peak_CCU_Promedio"),
                     x="Peak_CCU_Promedio",
-                    y="Categories",
+                    y="Genres",
                     orientation="h",
                     color="Peak_CCU_Promedio",
                     color_continuous_scale="Viridis",
                     text="Etiqueta_CCU",
                     hover_data={"Videojuegos": ":,", "Peak_CCU_Mediano": ":,"},
-                    title="Top 15 Categorías por Promedio de Usuarios Simultáneos (Peak CCU)",
+                    title="Top 15 Géneros por Promedio de Usuarios Simultáneos (Peak CCU)",
                     labels={
                         "Peak_CCU_Promedio": "Peak CCU Promedio",
-                        "Categories": "Categoría de Juego",
+                        "Genres": "Género de Juego",
                         "Videojuegos": "Cantidad de Videojuegos",
                         "Peak_CCU_Mediano": "Peak CCU Mediano",
                     },
                     template="plotly_dark",
                 )
-                fig_categorias.update_traces(textposition="outside", cliponaxis=False)
-                fig_categorias.update_layout(
+                fig_generos.update_traces(textposition="outside", cliponaxis=False)
+                fig_generos.update_layout(
                     height=620,
                     margin=dict(r=80),
                     coloraxis_showscale=False,
                     paper_bgcolor="#171d25",
                     plot_bgcolor="#171d25",
                 )
-                st.plotly_chart(fig_categorias, use_container_width=True)
+                st.plotly_chart(fig_generos, use_container_width=True)
 
-                categoria_lider = categorias_agg.iloc[0]
+                genero_lider = generos_agg_tab6.iloc[0]
                 st.info(
-                    f"**Hallazgo:** la categoría **{categoria_lider['Categories']}** presenta el mayor Peak CCU promedio, con aproximadamente **{categoria_lider['Peak_CCU_Promedio']:,.0f} usuarios simultáneos**, considerando categorías con al menos {min_juegos_categoria} videojuegos."
+                    f"**Hallazgo:** el género **{genero_lider['Genres']}** presenta el mayor Peak CCU promedio, con aproximadamente **{genero_lider['Peak_CCU_Promedio']:,.0f} usuarios simultáneos**, considerando géneros con al menos {min_juegos_genero} videojuegos."
                 )
             else:
                 st.warning(
-                    "No hay categorías con al menos 10 videojuegos dentro de los filtros seleccionados."
+                    "No hay géneros con al menos 10 videojuegos dentro de los filtros seleccionados."
                 )
         else:
-            st.warning("No hay datos válidos para analizar las categorías y el Peak CCU.")
+            st.warning("No hay datos válidos para analizar los géneros y el Peak CCU.")
 
 
     with tab7:
