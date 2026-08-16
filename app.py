@@ -481,7 +481,7 @@ def main():
 
             df_generos_ccu = generos_agg.copy()
             df_generos_ccu["Texto_CCU"] = df_generos_ccu["Peak_CCU_Promedio"].apply(
-                lambda x: f"{int(x):,}"
+                lambda x: f"{int(x):,}" if pd.notna(x) else "Sin datos"
             )
 
             col_g1, col_g2 = st.columns(2)
@@ -564,33 +564,177 @@ def main():
         else:
             st.warning("No hay datos disponibles para los filtros seleccionados.")
 
+    
     with tab4:
-        st.subheader("¿Cuál es el nivel de satisfacción de la comunidad en comparación con el tiempo de juego registrado por usuario?")
-        st.write(
-            "Se relaciona el tiempo promedio de juego registrado por usuario con la tasa de aprobación "
-            "de la comunidad. Cada punto representa un videojuego."
+            st.subheader(
+            "¿Cuál es el nivel de satisfacción de la comunidad "
+            "en comparación con el tiempo de juego registrado por usuario?"
+             )
+
+            st.write(
+            "Se relaciona el tiempo promedio de juego registrado por usuario "
+            "con la tasa de aprobación de la comunidad. Cada punto representa "
+            "un videojuego con tiempo de juego registrado."
+            )
+
+            # ============================================================
+            # 1. FILTRAR DATOS VÁLIDOS
+            # ============================================================
+            df_satisfaccion = df_filtrado.loc[
+                (df_filtrado["playtime_hours"] >= 0)
+                & (df_filtrado["approval_rate"] >= 0)
+                & (df_filtrado["approval_rate"] <= 100)
+                ].dropna(
+                subset=["playtime_hours", "approval_rate", "name"]
+                ).copy()
+
+            # ============================================================
+            # 2. VERIFICAR QUE EXISTAN DATOS SUFICIENTES
+            # ============================================================
+            if len(df_satisfaccion) >= 2:
+
+            # ========================================================
+            # 3. SEPARAR JUEGOS CON TIEMPO REGISTRADO
+            # ========================================================
+            
+                df_satisfaccion_con_tiempo = df_satisfaccion[
+                df_satisfaccion["playtime_hours"] > 0
+            ].copy()
+
+                total_juegos_satisfaccion = len(
+                df_satisfaccion
+            )
+
+                juegos_con_tiempo = len(
+                df_satisfaccion_con_tiempo
+            )
+
+                juegos_sin_tiempo = (
+                total_juegos_satisfaccion
+                - juegos_con_tiempo
+            )
+            # ========================================================
+            # 4. CALCULAR COBERTURA
+            # ========================================================
+
+                porcentaje_con_tiempo = (
+                juegos_con_tiempo
+                / total_juegos_satisfaccion
+                * 100
+            )
+
+                porcentaje_sin_tiempo = (
+                juegos_sin_tiempo
+                / total_juegos_satisfaccion
+                * 100
+            )
+
+            # ========================================================
+            # 5. APROBACIÓN PROMEDIO
+            # ========================================================
+                satisfaccion_promedio = (
+                df_satisfaccion["approval_rate"].mean()
         )
 
-        df_satisfaccion = df_filtrado.loc[
-            (df_filtrado["playtime_hours"] >= 0)
-            & (df_filtrado["approval_rate"] >= 0)
-            & (df_filtrado["approval_rate"] <= 100)
-        ].dropna(subset=["playtime_hours", "approval_rate", "name"]).copy()
+            # ========================================================
+            # 6. VERIFICAR SI HAY SUFICIENTES JUEGOS
+            #    CON TIEMPO REGISTRADO
+            # ========================================================
+                if juegos_con_tiempo >= 2:
 
-        if len(df_satisfaccion) >= 2:
-            correlacion = df_satisfaccion["playtime_hours"].corr(
-                df_satisfaccion["approval_rate"]
+            # ====================================================
+            # 7. TIEMPO MEDIANO
+            # ====================================================
+                    tiempo_mediano = df_satisfaccion_con_tiempo[
+                        "playtime_hours"
+                        ].median()
+            
+
+            # ====================================================
+            # 8. CORRELACIÓN DE PEARSON
+            # ====================================================
+                correlacion_pearson = (
+                df_satisfaccion_con_tiempo[
+                    "playtime_hours"
+                ].corr(
+                    df_satisfaccion_con_tiempo[
+                        "approval_rate"
+                    ],
+                    method="pearson"
+                )
             )
-            satisfaccion_promedio = df_satisfaccion["approval_rate"].mean()
-            tiempo_mediano = df_satisfaccion["playtime_hours"].median()
 
-            k1, k2, k3 = st.columns(3)
-            k1.metric("Aprobación promedio", f"{satisfaccion_promedio:.1f}%")
-            k2.metric("Tiempo mediano de juego", f"{tiempo_mediano:,.1f} h")
-            k3.metric("Correlación Pearson", f"{correlacion:.2f}")
+            # ====================================================
+            # 9. CALCULAR PERCENTIL 99
+            # ====================================================
 
-            fig_satisfaccion = px.scatter(
-                df_satisfaccion,
+                percentil_99 = (
+                    df_satisfaccion_con_tiempo[
+                        "playtime_hours"
+                    ].quantile(0.99)
+                )
+
+            # ====================================================
+            # 10. IDENTIFICAR VALORES EXTREMOS
+            # ====================================================
+
+                juegos_valores_extremos = (
+                    df_satisfaccion_con_tiempo[
+                        "playtime_hours"
+                    ] > percentil_99
+                ).sum()
+
+                porcentaje_valores_extremos = (
+                    juegos_valores_extremos
+                    / juegos_con_tiempo
+                    * 100
+                )
+
+            # ====================================================
+            # 11. KPIs
+            # ====================================================
+                k1, k2, k3, k4 = st.columns(4)
+
+                k1.metric(
+                "Aprobación promedio",
+                f"{satisfaccion_promedio:.1f}%"
+            )
+
+                k2.metric(
+                "Tiempo registrado",
+                f"{porcentaje_con_tiempo:.1f}%"
+            )
+
+                k3.metric(
+                "Pearson",
+                f"{correlacion_pearson:.2f}"
+            )
+
+                k4.metric(
+                "Valores extremos",
+                f"{juegos_valores_extremos}"  
+                )
+
+            # ====================================================
+            # 12. PREPARAR DATOS PARA EL SCATTER
+            # ====================================================
+                percentil_99 = (
+                df_satisfaccion_con_tiempo[
+                    "playtime_hours"
+                ].quantile(0.99)
+            )
+
+                df_scatter = df_satisfaccion_con_tiempo[
+                df_satisfaccion_con_tiempo[
+                    "playtime_hours"
+                ] <= percentil_99
+            ].copy()
+
+            # ====================================================
+            # 13. GRÁFICO DE DISPERSIÓN
+            # ====================================================
+                fig_satisfaccion = px.scatter(
+                df_scatter,
                 x="playtime_hours",
                 y="approval_rate",
                 size="total_reviews",
@@ -605,39 +749,114 @@ def main():
                 },
                 title="Tiempo de Juego vs Satisfacción de la Comunidad",
                 labels={
-                    "playtime_hours": "Tiempo de Juego por Usuario (horas)",
-                    "approval_rate": "Satisfacción / Aprobación (%)",
+                    "playtime_hours": "Tiempo de Juego Registrado (horas)",
+                    "approval_rate": "Aprobación de la Comunidad (%)",
                     "price_category": "Rango de Precio",
                     "total_reviews": "Total de Reseñas",
                 },
                 template="plotly_dark",
-                opacity=0.72,
-                size_max=35,
+                opacity=0.65,
+                size_max=30,
             )
-            fig_satisfaccion.update_layout(
+
+            # ====================================================
+            # 14. ESCALA 
+            # ====================================================
+                fig_satisfaccion.update_xaxes(
+                title=(
+                    "Tiempo de Juego Registrado (Horas)"
+                )
+            )
+
+            # ====================================================
+            # 15. DISEÑO DEL GRÁFICO
+            # ====================================================
+                fig_satisfaccion.update_layout(
                 height=560,
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_satisfaccion, use_container_width=True)
 
-            if correlacion >= 0.5:
-                interpretacion = "Se observa una relación positiva moderada/fuerte: los videojuegos con mayor tiempo de juego tienden a presentar mayor aprobación."
-            elif correlacion >= 0.2:
-                interpretacion = "Se observa una relación positiva débil/moderada: el tiempo de juego tiene cierta asociación con la aprobación, aunque no la explica por sí solo."
-            elif correlacion <= -0.5:
-                interpretacion = "Se observa una relación negativa moderada/fuerte: un mayor tiempo de juego tiende a asociarse con menor aprobación."
-            elif correlacion <= -0.2:
-                interpretacion = "Se observa una relación negativa débil/moderada entre tiempo de juego y aprobación."
-            else:
-                interpretacion = "La relación lineal es débil: el tiempo de juego no presenta una asociación importante con la aprobación de la comunidad."
+                st.plotly_chart(
+                fig_satisfaccion,
+                use_container_width=True
+            )
 
-            st.info(f"**Hallazgo:** {interpretacion}")
-        else:
-            st.warning("No hay suficientes datos válidos para comparar satisfacción y tiempo de juego.")
+            # ====================================================
+            # 16. ACLARACIÓN METODOLÓGICA
+            # ====================================================
+                st.caption(
+                f"El análisis de correlación considera únicamente "
+                f"los {juegos_con_tiempo:,} videojuegos con tiempo "
+                f"de juego registrado "
+                f"({porcentaje_con_tiempo:.1f}% del total). "
+                f"Los valores extremos superiores al percentil 99 "
+                f"se excluyen únicamente de la visualización."
+            )
 
+            # ====================================================
+            # 17. INFORMACIÓN SOBRE COBERTURA
+            # ====================================================
+                st.caption(
+                f"Del total de {total_juegos:,} videojuegos analizados, "
+                f"{juegos_con_tiempo:,} ({porcentaje_con_tiempo:.1f}%) "
+                f"cuentan con tiempo de juego registrado y "
+                f"{total_juegos - juegos_con_tiempo:,} "
+                f"({porcentaje_sin_tiempo:.1f}%) no presentan "
+                f"tiempo registrado."
+            )
 
+            # ====================================================
+            # 18. INTERPRETACIÓN DE PEARSON
+            # ====================================================
+                if correlacion_pearson >= 0.5:
 
+                    interpretacion_pearson = (
+                    "Se observa una relación positiva "
+                    "moderada/fuerte: los videojuegos con mayor "
+                    "tiempo de juego tienden a presentar mayor "
+                    "aprobación."
+                )
+
+                elif correlacion_pearson >= 0.2:
+
+                    interpretacion_pearson = (
+                    "Se observa una relación positiva "
+                    "débil/moderada: el tiempo de juego presenta "
+                    "cierta asociación con la aprobación, aunque "
+                    "no la explica por sí solo."
+                )
+
+                elif correlacion_pearson <= -0.5:
+
+                    interpretacion_pearson = (
+                    "Se observa una relación negativa "
+                    "moderada/fuerte: un mayor tiempo de juego "
+                    "tiende a asociarse con menor aprobación."
+                )
+
+                elif correlacion_pearson <= -0.2:
+
+                    interpretacion_pearson = (
+                    "Se observa una relación negativa "
+                    "débil/moderada entre tiempo de juego "
+                    "y aprobación."
+                )
+
+                else:
+
+                    interpretacion_pearson = (
+                    "La relación lineal es débil: el tiempo "
+                    "de juego no presenta una asociación "
+                    "importante con la aprobación de la comunidad."
+                )
+
+                st.info(
+                f"**Hallazgo según Pearson:** "
+                f"{interpretacion_pearson}"
+            )
+    
+    
     with tab5:
         st.subheader("¿Cómo se distribuyen los videojuegos en Steam según su estrategia de precios (gratuito vs. rangos comerciales)?")
         st.write(
