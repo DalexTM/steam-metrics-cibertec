@@ -230,13 +230,14 @@ def main():
     col3.metric("👍 Aprobación Comunidad", f"{aprobacion_promedio:.1f}%")
     col4.metric("💰 Ingresos Estimados", f"${ingresos_totales_millones:,.2f} M")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "1. Crítica vs Éxito Comercial",
             "2. Discrepancia Crítica vs Comunidad",
             "3. Géneros más Rentables",
-            "4. Explorador de Datos",
-            "5. Correlaciones",
+            "4. Satisfacción vs Tiempo de Juego",
+            "5. Explorador de Datos",
+            "6. Correlaciones",
         ]
     )
 
@@ -562,6 +563,80 @@ def main():
             st.warning("No hay datos disponibles para los filtros seleccionados.")
 
     with tab4:
+        st.subheader("¿Cuál es el nivel de satisfacción de la comunidad en comparación con el tiempo de juego registrado por usuario?")
+        st.write(
+            "Se relaciona el tiempo promedio de juego registrado por usuario con la tasa de aprobación "
+            "de la comunidad. Cada punto representa un videojuego."
+        )
+
+        df_satisfaccion = df_filtrado.loc[
+            (df_filtrado["playtime_hours"] >= 0)
+            & (df_filtrado["approval_rate"] >= 0)
+            & (df_filtrado["approval_rate"] <= 100)
+        ].dropna(subset=["playtime_hours", "approval_rate", "name"]).copy()
+
+        if len(df_satisfaccion) >= 2:
+            correlacion = df_satisfaccion["playtime_hours"].corr(
+                df_satisfaccion["approval_rate"]
+            )
+            satisfaccion_promedio = df_satisfaccion["approval_rate"].mean()
+            tiempo_mediano = df_satisfaccion["playtime_hours"].median()
+
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Aprobación promedio", f"{satisfaccion_promedio:.1f}%")
+            k2.metric("Tiempo mediano de juego", f"{tiempo_mediano:,.1f} h")
+            k3.metric("Correlación Pearson", f"{correlacion:.2f}")
+
+            fig_satisfaccion = px.scatter(
+                df_satisfaccion,
+                x="playtime_hours",
+                y="approval_rate",
+                size="total_reviews",
+                color="price_category",
+                color_discrete_map=PALETA_PRECIOS,
+                hover_name="name",
+                hover_data={
+                    "playtime_hours": ":,.2f",
+                    "approval_rate": ":.2f",
+                    "total_reviews": ":,",
+                    "Peak_CCU": ":,",
+                },
+                title="Tiempo de Juego vs Satisfacción de la Comunidad",
+                labels={
+                    "playtime_hours": "Tiempo de Juego por Usuario (horas)",
+                    "approval_rate": "Satisfacción / Aprobación (%)",
+                    "price_category": "Rango de Precio",
+                    "total_reviews": "Total de Reseñas",
+                },
+                template="plotly_dark",
+                opacity=0.72,
+                size_max=35,
+            )
+            fig_satisfaccion.update_layout(
+                height=560,
+                paper_bgcolor="#171d25",
+                plot_bgcolor="#171d25",
+            )
+            st.plotly_chart(fig_satisfaccion, use_container_width=True)
+
+            if correlacion >= 0.5:
+                interpretacion = "Se observa una relación positiva moderada/fuerte: los videojuegos con mayor tiempo de juego tienden a presentar mayor aprobación."
+            elif correlacion >= 0.2:
+                interpretacion = "Se observa una relación positiva débil/moderada: el tiempo de juego tiene cierta asociación con la aprobación, aunque no la explica por sí solo."
+            elif correlacion <= -0.5:
+                interpretacion = "Se observa una relación negativa moderada/fuerte: un mayor tiempo de juego tiende a asociarse con menor aprobación."
+            elif correlacion <= -0.2:
+                interpretacion = "Se observa una relación negativa débil/moderada entre tiempo de juego y aprobación."
+            else:
+                interpretacion = "La relación lineal es débil: el tiempo de juego no presenta una asociación importante con la aprobación de la comunidad."
+
+            st.info(f"**Hallazgo:** {interpretacion}")
+        else:
+            st.warning("No hay suficientes datos válidos para comparar satisfacción y tiempo de juego.")
+
+
+    with tab5:
+
         st.subheader("Explorador de Datos Interactivos")
         st.write(
             "Visualización y búsqueda directa sobre la tabla consolidada en la Capa Gold."
@@ -579,7 +654,7 @@ def main():
 
         st.dataframe(df_tabla, use_container_width=True, height=450)
 
-    with tab5:
+    with tab6:
         st.subheader("Mapa de Correlación Estadística entre Métricas Key")
         st.write(
             "Análisis cuantitativo mediante el Coeficiente de Correlación de Pearson entre las variables "
@@ -639,6 +714,7 @@ def main():
             st.plotly_chart(fig_heatmap, use_container_width=True)
         else:
             st.warning("No hay datos disponibles para los filtros seleccionados.")
+
 
 
 if __name__ == "__main__":
