@@ -230,14 +230,16 @@ def main():
     col3.metric("👍 Aprobación Comunidad", f"{aprobacion_promedio:.1f}%")
     col4.metric("💰 Ingresos Estimados", f"${ingresos_totales_millones:,.2f} M")
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
         [
             "1. Crítica vs Éxito Comercial",
             "2. Discrepancia Crítica vs Comunidad",
             "3. Géneros más Rentables",
             "4. Satisfacción vs Tiempo de Juego",
-            "5. Explorador de Datos",
-            "6. Correlaciones",
+            "5. Estrategia de precios",
+            "6. Categorías vs Peak CCU",
+            "7. Explorador de Datos",
+            "8. Correlaciones",
         ]
     )
 
@@ -635,7 +637,159 @@ def main():
             st.warning("No hay suficientes datos válidos para comparar satisfacción y tiempo de juego.")
 
 
+
     with tab5:
+        st.subheader("¿Cómo se distribuyen los videojuegos en Steam según su estrategia de precios (gratuito vs. rangos comerciales)?")
+        st.write(
+            "La distribución clasifica los videojuegos en gratuitos y tres rangos comerciales "
+            "para identificar qué estrategia de precios concentra la mayor oferta del catálogo."
+        )
+
+        orden_precios = [
+            "Gratis ($0)",
+            "Económico ($0.01 - $9.99)",
+            "Estándar ($10.00 - $29.99)",
+            "Premium ($30.00+)",
+        ]
+
+        df_precios = (
+            df_filtrado["price_category"]
+            .value_counts()
+            .reindex(orden_precios, fill_value=0)
+            .rename_axis("Estrategia de Precio")
+            .reset_index(name="Videojuegos")
+        )
+        total_precios = int(df_precios["Videojuegos"].sum())
+        df_precios["Porcentaje"] = (
+            df_precios["Videojuegos"] / total_precios * 100
+            if total_precios > 0
+            else 0
+        )
+        df_precios["Etiqueta"] = df_precios.apply(
+            lambda row: f"{int(row['Videojuegos']):,} ({row['Porcentaje']:.1f}%)", axis=1
+        )
+
+        if total_precios > 0:
+            fig_precios = px.bar(
+                df_precios,
+                x="Estrategia de Precio",
+                y="Videojuegos",
+                color="Estrategia de Precio",
+                color_discrete_map=PALETA_PRECIOS,
+                text="Etiqueta",
+                title="Distribución de Videojuegos por Estrategia de Precio",
+                labels={
+                    "Estrategia de Precio": "Estrategia de Precio",
+                    "Videojuegos": "Cantidad de Videojuegos",
+                },
+                template="plotly_dark",
+            )
+            fig_precios.update_traces(textposition="outside", cliponaxis=False)
+            fig_precios.update_layout(
+                showlegend=False,
+                height=560,
+                paper_bgcolor="#171d25",
+                plot_bgcolor="#171d25",
+            )
+            st.plotly_chart(fig_precios, use_container_width=True)
+
+            categoria_mayor = df_precios.loc[
+                df_precios["Videojuegos"].idxmax(), "Estrategia de Precio"
+            ]
+            porcentaje_mayor = df_precios.loc[
+                df_precios["Videojuegos"].idxmax(), "Porcentaje"
+            ]
+            st.info(
+                f"**Hallazgo:** la estrategia **{categoria_mayor}** concentra la mayor proporción del catálogo filtrado, con **{porcentaje_mayor:.1f}%** de los videojuegos."
+            )
+        else:
+            st.warning("No hay datos disponibles para analizar la distribución de precios.")
+
+    with tab6:
+        st.subheader("¿Cuáles son las categorías de juego que logran retener un mayor número de usuarios simultáneos en hora pico?")
+        st.write(
+            "Se descomponen las categorías de cada videojuego y se calcula el **Peak CCU promedio** "
+            "por categoría. Se exige un mínimo de juegos por categoría para evitar que un solo título "
+            "distorsione el resultado. **Nota:** Peak CCU mide concurrencia en hora pico; no representa "
+            "retención longitudinal de usuarios."
+        )
+
+        df_categorias = df_filtrado.dropna(subset=["Categories", "Peak_CCU"]).copy()
+        df_categorias["Categories"] = (
+            df_categorias["Categories"]
+            .astype(str)
+            .str.split(",")
+        )
+        df_categorias = df_categorias.explode("Categories")
+        df_categorias["Categories"] = df_categorias["Categories"].str.strip()
+        df_categorias = df_categorias.loc[df_categorias["Categories"] != ""]
+
+        if not df_categorias.empty:
+            categorias_agg = (
+                df_categorias.groupby("Categories", observed=False)
+                .agg(
+                    Peak_CCU_Promedio=("Peak_CCU", "mean"),
+                    Videojuegos=("appid", "nunique"),
+                    Peak_CCU_Mediano=("Peak_CCU", "median"),
+                )
+                .reset_index()
+            )
+
+            # Evita que categorías presentes en muy pocos juegos dominen el ranking.
+            min_juegos_categoria = 10
+            categorias_agg = categorias_agg.loc[
+                categorias_agg["Videojuegos"] >= min_juegos_categoria
+            ]
+            categorias_agg = categorias_agg.sort_values(
+                "Peak_CCU_Promedio", ascending=False
+            ).head(15)
+
+            if not categorias_agg.empty:
+                categorias_agg["Etiqueta_CCU"] = categorias_agg["Peak_CCU_Promedio"].apply(
+                    lambda x: f"{int(x):,}"
+                )
+
+                fig_categorias = px.bar(
+                    categorias_agg.sort_values("Peak_CCU_Promedio"),
+                    x="Peak_CCU_Promedio",
+                    y="Categories",
+                    orientation="h",
+                    color="Peak_CCU_Promedio",
+                    color_continuous_scale="Viridis",
+                    text="Etiqueta_CCU",
+                    hover_data={"Videojuegos": ":,", "Peak_CCU_Mediano": ":,"},
+                    title="Top 15 Categorías por Promedio de Usuarios Simultáneos (Peak CCU)",
+                    labels={
+                        "Peak_CCU_Promedio": "Peak CCU Promedio",
+                        "Categories": "Categoría de Juego",
+                        "Videojuegos": "Cantidad de Videojuegos",
+                        "Peak_CCU_Mediano": "Peak CCU Mediano",
+                    },
+                    template="plotly_dark",
+                )
+                fig_categorias.update_traces(textposition="outside", cliponaxis=False)
+                fig_categorias.update_layout(
+                    height=620,
+                    margin=dict(r=80),
+                    coloraxis_showscale=False,
+                    paper_bgcolor="#171d25",
+                    plot_bgcolor="#171d25",
+                )
+                st.plotly_chart(fig_categorias, use_container_width=True)
+
+                categoria_lider = categorias_agg.iloc[0]
+                st.info(
+                    f"**Hallazgo:** la categoría **{categoria_lider['Categories']}** presenta el mayor Peak CCU promedio, con aproximadamente **{categoria_lider['Peak_CCU_Promedio']:,.0f} usuarios simultáneos**, considerando categorías con al menos {min_juegos_categoria} videojuegos."
+                )
+            else:
+                st.warning(
+                    "No hay categorías con al menos 10 videojuegos dentro de los filtros seleccionados."
+                )
+        else:
+            st.warning("No hay datos válidos para analizar las categorías y el Peak CCU.")
+
+
+    with tab7:
 
         st.subheader("Explorador de Datos Interactivos")
         st.write(
@@ -654,7 +808,7 @@ def main():
 
         st.dataframe(df_tabla, use_container_width=True, height=450)
 
-    with tab6:
+    with tab8:
         st.subheader("Mapa de Correlación Estadística entre Métricas Key")
         st.write(
             "Análisis cuantitativo mediante el Coeficiente de Correlación de Pearson entre las variables "
