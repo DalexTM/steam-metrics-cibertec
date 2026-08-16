@@ -583,410 +583,410 @@ def main():
             "un videojuego con tiempo de juego registrado."
         )
 
-    # ============================================================
-    # 1. FILTRAR DATOS VÁLIDOS
-    # ============================================================
+        # ============================================================
+        # 1. FILTRAR DATOS VÁLIDOS
+        # ============================================================
 
-    df_satisfaccion = (
-        df_filtrado[
-            (df_filtrado["playtime_hours"] >= 0)
-            & (df_filtrado["approval_rate"] >= 0)
-            & (df_filtrado["approval_rate"] <= 100)
-        ]
-        .dropna(subset=["playtime_hours", "approval_rate", "name"])
-        .copy()
-    )
-
-    # ============================================================
-    # 2. VERIFICAR DATOS
-    # ============================================================
-
-    if len(df_satisfaccion) >= 2:
-
-        # ========================================================
-        # 3. CANTIDAD DE JUEGOS CON Y SIN TIEMPO
-        # ========================================================
-
-        total_juegos_satisfaccion = len(df_satisfaccion)
-
-        juegos_con_tiempo = df_satisfaccion[
-            df_satisfaccion["playtime_hours"] > 0
-        ].shape[0]
-
-        juegos_sin_tiempo = total_juegos_satisfaccion - juegos_con_tiempo
-
-        # ========================================================
-        # 4. PORCENTAJES
-        # ========================================================
-
-        porcentaje_con_tiempo = juegos_con_tiempo / total_juegos_satisfaccion * 100
-
-        porcentaje_sin_tiempo = juegos_sin_tiempo / total_juegos_satisfaccion * 100
-
-        # ========================================================
-        # 5. APROBACIÓN PROMEDIO
-        # ========================================================
-
-        satisfaccion_promedio = df_satisfaccion["approval_rate"].mean()
-
-        # ========================================================
-        # 6. SI EXISTEN SUFICIENTES JUEGOS CON TIEMPO
-        # ========================================================
-
-        if juegos_con_tiempo >= 2:
-
-            # ====================================================
-            # 7. TIEMPO PROMEDIO
-            # ====================================================
-
-            tiempo_promedio = df_satisfaccion.loc[
-                df_satisfaccion["playtime_hours"] > 0, "playtime_hours"
-            ].mean()
-
-            # ====================================================
-            # 8. CORRELACIÓN PEARSON
-            # ====================================================
-
-            datos_con_tiempo = df_satisfaccion.loc[
-                df_satisfaccion["playtime_hours"] > 0,
-                ["playtime_hours", "approval_rate"],
+        df_satisfaccion = (
+            df_filtrado[
+                (df_filtrado["playtime_hours"] >= 0)
+                & (df_filtrado["approval_rate"] >= 0)
+                & (df_filtrado["approval_rate"] <= 100)
             ]
+            .dropna(subset=["playtime_hours", "approval_rate", "name"])
+            .copy()
+        )
 
-            correlacion_pearson = datos_con_tiempo["playtime_hours"].corr(
-                datos_con_tiempo["approval_rate"], method="pearson"
-            )
+        # ============================================================
+        # 2. VERIFICAR DATOS
+        # ============================================================
 
-            # ====================================================
-            # 9. PERCENTIL 99
-            # ====================================================
+        if len(df_satisfaccion) >= 2:
 
-            percentil_99 = df_satisfaccion.loc[
-                df_satisfaccion["playtime_hours"] > 0, "playtime_hours"
-            ].quantile(0.99)
+            # ========================================================
+            # 3. CANTIDAD DE JUEGOS CON Y SIN TIEMPO
+            # ========================================================
 
-            # ====================================================
-            # 10. VALORES EXTREMOS
-            # ====================================================
+            total_juegos_satisfaccion = len(df_satisfaccion)
 
-            juegos_valores_extremos = (
-                (df_satisfaccion["playtime_hours"] > percentil_99)
-                & (df_satisfaccion["playtime_hours"] > 0)
-            ).sum()
-
-            porcentaje_valores_extremos = (
-                juegos_valores_extremos / juegos_con_tiempo * 100
-            )
-
-            # ====================================================
-            # 11. KPIs
-            # ====================================================
-
-            k1, k2, k3, k4 = st.columns(4)
-
-            k1.metric("Tiempo Promedio", f"{tiempo_promedio:,.1f} h")
-
-            k2.metric("Tiempo Registrado", f"{porcentaje_con_tiempo:.1f}%")
-
-            k3.metric("Correlación Pearson", f"{correlacion_pearson:.2f}")
-
-            k4.metric("Valores Extremos", f"{juegos_valores_extremos:,}")
-
-            # ====================================================
-            # 12. PREPARAR DATOS PARA EL SCATTER
-            # ====================================================
-
-            df_scatter = df_satisfaccion.loc[
-                (df_satisfaccion["playtime_hours"] > 0)
-                & (df_satisfaccion["playtime_hours"] <= percentil_99)
-            ].copy()
-
-            # ====================================================
-            # 13. GRÁFICO 1
-            # ====================================================
-
-            fig_satisfaccion = px.scatter(
-                df_scatter,
-                x="playtime_hours",
-                y="approval_rate",
-                size="total_reviews",
-                color="price_category",
-                color_discrete_map=PALETA_PRECIOS,
-                hover_name="name",
-                hover_data={
-                    "playtime_hours": ":,.2f",
-                    "approval_rate": ":.2f",
-                    "total_reviews": ":,",
-                    "Peak_CCU": ":,",
-                },
-                title=("Tiempo de Juego vs " "Satisfacción de la Comunidad"),
-                labels={
-                    "playtime_hours": ("Tiempo de Juego Registrado (horas)"),
-                    "approval_rate": ("Aprobación de la Comunidad (%)"),
-                    "price_category": "Rango de Precio",
-                    "total_reviews": "Total de Reseñas",
-                },
-                template="plotly_dark",
-                opacity=0.65,
-                size_max=30,
-            )
-
-            fig_satisfaccion.update_xaxes(title="Tiempo de Juego Registrado (horas)")
-
-            fig_satisfaccion.update_layout(
-                height=560,
-                paper_bgcolor="#171d25",
-                plot_bgcolor="#171d25",
-            )
-
-            st.plotly_chart(fig_satisfaccion, use_container_width=True)
-
-            # ====================================================
-            # 14. INFORMACIÓN SOBRE VALORES EXTREMOS
-            # ====================================================
-
-            st.caption(
-                f"El análisis de correlación considera únicamente "
-                f"los {juegos_con_tiempo:,} videojuegos con tiempo "
-                f"de juego registrado ({porcentaje_con_tiempo:.1f}% "
-                f"del total). El percentil 99 corresponde a "
-                f"{percentil_99:,.1f} horas. Los "
-                f"{juegos_valores_extremos:,} videojuegos que "
-                f"superan este valor ({porcentaje_valores_extremos:.1f}% "
-                f"de los juegos con tiempo registrado) se excluyen "
-                f"únicamente de la visualización."
-            )
-
-            # ====================================================
-            # 15. COBERTURA DEL TIEMPO
-            # ====================================================
-
-            st.caption(
-                f"De los {total_juegos_satisfaccion:,} videojuegos "
-                f"analizados, {juegos_con_tiempo:,} "
-                f"({porcentaje_con_tiempo:.1f}%) cuentan con tiempo "
-                f"de juego registrado y {juegos_sin_tiempo:,} "
-                f"({porcentaje_sin_tiempo:.1f}%) no presentan "
-                f"tiempo registrado."
-            )
-
-            # ====================================================
-            # 16. SEGUNDO GRÁFICO
-            # NIVELES DE TIEMPO
-            # ====================================================
-
-            st.subheader(
-                "¿Cómo se distribuyen los videojuegos "
-                "según su nivel de tiempo de juego?"
-            )
-
-            st.write(
-                "Los videojuegos con tiempo registrado se agrupan "
-                "en diferentes niveles para identificar dónde se "
-                "concentra la mayor cantidad de títulos y comparar "
-                "su aprobación promedio."
-            )
-
-            # ====================================================
-            # 17. CREAR NIVELES DE TIEMPO
-            # ====================================================
-
-            df_niveles_tiempo = df_satisfaccion.loc[
+            juegos_con_tiempo = df_satisfaccion[
                 df_satisfaccion["playtime_hours"] > 0
-            ].copy()
+            ].shape[0]
 
-            df_niveles_tiempo["nivel_tiempo"] = pd.cut(
-                df_niveles_tiempo["playtime_hours"],
-                bins=[0, 1, 5, 20, 50, 100, float("inf")],
-                labels=[
-                    "Muy bajo (0-1 h)",
-                    "Bajo (1-5 h)",
-                    "Medio (5-20 h)",
-                    "Alto (20-50 h)",
-                    "Muy alto (50-100 h)",
-                    "Extremo (100+ h)",
-                ],
-                include_lowest=True,
-            )
+            juegos_sin_tiempo = total_juegos_satisfaccion - juegos_con_tiempo
 
-            # ====================================================
-            # 18. AGRUPAR NIVELES
-            # ====================================================
+            # ========================================================
+            # 4. PORCENTAJES
+            # ========================================================
 
-            niveles_agg = (
-                df_niveles_tiempo.groupby("nivel_tiempo", observed=False)
-                .agg(
-                    Videojuegos=("name", "count"),
-                    Aprobacion_Promedio=("approval_rate", "mean"),
-                    Tiempo_Promedio=("playtime_hours", "mean"),
-                )
-                .reset_index()
-            )
+            porcentaje_con_tiempo = juegos_con_tiempo / total_juegos_satisfaccion * 100
 
-            niveles_agg["Porcentaje"] = (
-                niveles_agg["Videojuegos"] / juegos_con_tiempo * 100
-            )
+            porcentaje_sin_tiempo = juegos_sin_tiempo / total_juegos_satisfaccion * 100
 
-            niveles_agg["Etiqueta"] = niveles_agg.apply(
-                lambda row: f"{int(row['Videojuegos']):,} "
-                f"({row['Porcentaje']:.1f}%)",
-                axis=1,
-            )
+            # ========================================================
+            # 5. APROBACIÓN PROMEDIO
+            # ========================================================
 
-            # ====================================================
-            # 19. GRÁFICO DE NIVELES
-            # ====================================================
+            satisfaccion_promedio = df_satisfaccion["approval_rate"].mean()
 
-            fig_niveles = px.bar(
-                niveles_agg,
-                x="nivel_tiempo",
-                y="Videojuegos",
-                color="Aprobacion_Promedio",
-                color_continuous_scale="Viridis",
-                text="Etiqueta",
-                hover_data={
-                    "Videojuegos": ":,",
-                    "Porcentaje": ":.1f",
-                    "Aprobacion_Promedio": ":.1f",
-                    "Tiempo_Promedio": ":.1f",
-                },
-                title=("Distribución de Videojuegos por " "Nivel de Tiempo de Juego"),
-                labels={
-                    "nivel_tiempo": ("Nivel de Tiempo Registrado"),
-                    "Videojuegos": ("Cantidad de Videojuegos"),
-                    "Aprobacion_Promedio": ("Aprobación Promedio (%)"),
-                    "Porcentaje": "Porcentaje (%)",
-                    "Tiempo_Promedio": ("Tiempo Promedio (horas)"),
-                },
-                template="plotly_dark",
-            )
+            # ========================================================
+            # 6. SI EXISTEN SUFICIENTES JUEGOS CON TIEMPO
+            # ========================================================
 
-            fig_niveles.update_traces(textposition="outside", cliponaxis=False)
+            if juegos_con_tiempo >= 2:
 
-            fig_niveles.update_layout(
-                height=520,
-                paper_bgcolor="#171d25",
-                plot_bgcolor="#171d25",
-                coloraxis_colorbar=dict(title="Aprobación (%)"),
-            )
+                # ====================================================
+                # 7. TIEMPO PROMEDIO
+                # ====================================================
 
-            st.plotly_chart(fig_niveles, use_container_width=True)
+                tiempo_promedio = df_satisfaccion.loc[
+                    df_satisfaccion["playtime_hours"] > 0, "playtime_hours"
+                ].mean()
 
-            # ====================================================
-            # 20. TABLA RESUMEN
-            # ====================================================
+                # ====================================================
+                # 8. CORRELACIÓN PEARSON
+                # ====================================================
 
-            st.subheader("Resumen por nivel de tiempo de juego")
-
-            df_niveles_tabla = niveles_agg.copy()
-
-            df_niveles_tabla["Aprobación Promedio"] = df_niveles_tabla[
-                "Aprobacion_Promedio"
-            ].map(lambda x: f"{x:.1f}%")
-
-            df_niveles_tabla["Tiempo Promedio"] = df_niveles_tabla[
-                "Tiempo_Promedio"
-            ].map(lambda x: f"{x:.1f} h")
-
-            df_niveles_tabla["Porcentaje"] = df_niveles_tabla["Porcentaje"].map(
-                lambda x: f"{x:.1f}%"
-            )
-
-            df_niveles_tabla = df_niveles_tabla.rename(
-                columns={"nivel_tiempo": "Nivel de Tiempo"}
-            )[
-                [
-                    "Nivel de Tiempo",
-                    "Videojuegos",
-                    "Porcentaje",
-                    "Aprobación Promedio",
-                    "Tiempo Promedio",
+                datos_con_tiempo = df_satisfaccion.loc[
+                    df_satisfaccion["playtime_hours"] > 0,
+                    ["playtime_hours", "approval_rate"],
                 ]
-            ]
 
-            st.dataframe(df_niveles_tabla, use_container_width=True, hide_index=True)
-
-            # ====================================================
-            # 21. HALLAZGO
-            # ====================================================
-
-            nivel_mayor = niveles_agg.loc[niveles_agg["Videojuegos"].idxmax()]
-
-            nivel_mayor_aprobacion = niveles_agg.loc[
-                niveles_agg["Aprobacion_Promedio"].idxmax()
-            ]
-
-            st.info(
-                f"**Hallazgo:** el nivel **"
-                f"{nivel_mayor['nivel_tiempo']}** concentra "
-                f"la mayor cantidad de videojuegos, con "
-                f"({nivel_mayor['Porcentaje']:.1f}%)**. "
-                f"El nivel con mayor aprobación promedio es "
-                f"**{nivel_mayor_aprobacion['nivel_tiempo']}**, "
-                f"con **"
-                f"{nivel_mayor_aprobacion['Aprobacion_Promedio']:.1f}%**."
-            )
-
-            # ====================================================
-            # 22. INTERPRETACIÓN DE PEARSON
-            # ====================================================
-
-            if correlacion_pearson >= 0.5:
-
-                interpretacion_pearson = (
-                    "Se observa una relación positiva "
-                    "moderada/fuerte: los videojuegos con mayor "
-                    "tiempo de juego tienden a presentar mayor "
-                    "aprobación."
+                correlacion_pearson = datos_con_tiempo["playtime_hours"].corr(
+                    datos_con_tiempo["approval_rate"], method="pearson"
                 )
 
-            elif correlacion_pearson >= 0.2:
+                # ====================================================
+                # 9. PERCENTIL 99
+                # ====================================================
 
-                interpretacion_pearson = (
-                    "Se observa una relación positiva "
-                    "débil/moderada: el tiempo de juego presenta "
-                    "cierta asociación con la aprobación, aunque "
-                    "no la explica por sí solo."
+                percentil_99 = df_satisfaccion.loc[
+                    df_satisfaccion["playtime_hours"] > 0, "playtime_hours"
+                ].quantile(0.99)
+
+                # ====================================================
+                # 10. VALORES EXTREMOS
+                # ====================================================
+
+                juegos_valores_extremos = (
+                    (df_satisfaccion["playtime_hours"] > percentil_99)
+                    & (df_satisfaccion["playtime_hours"] > 0)
+                ).sum()
+
+                porcentaje_valores_extremos = (
+                    juegos_valores_extremos / juegos_con_tiempo * 100
                 )
 
-            elif correlacion_pearson <= -0.5:
+                # ====================================================
+                # 11. KPIs
+                # ====================================================
 
-                interpretacion_pearson = (
-                    "Se observa una relación negativa "
-                    "moderada/fuerte: un mayor tiempo de juego "
-                    "tiende a asociarse con menor aprobación."
+                k1, k2, k3, k4 = st.columns(4)
+
+                k1.metric("Tiempo Promedio", f"{tiempo_promedio:,.1f} h")
+
+                k2.metric("Tiempo Registrado", f"{porcentaje_con_tiempo:.1f}%")
+
+                k3.metric("Correlación Pearson", f"{correlacion_pearson:.2f}")
+
+                k4.metric("Valores Extremos", f"{juegos_valores_extremos:,}")
+
+                # ====================================================
+                # 12. PREPARAR DATOS PARA EL SCATTER
+                # ====================================================
+
+                df_scatter = df_satisfaccion.loc[
+                    (df_satisfaccion["playtime_hours"] > 0)
+                    & (df_satisfaccion["playtime_hours"] <= percentil_99)
+                ].copy()
+
+                # ====================================================
+                # 13. GRÁFICO 1
+                # ====================================================
+
+                fig_satisfaccion = px.scatter(
+                    df_scatter,
+                    x="playtime_hours",
+                    y="approval_rate",
+                    size="total_reviews",
+                    color="price_category",
+                    color_discrete_map=PALETA_PRECIOS,
+                    hover_name="name",
+                    hover_data={
+                        "playtime_hours": ":,.2f",
+                        "approval_rate": ":.2f",
+                        "total_reviews": ":,",
+                        "Peak_CCU": ":,",
+                    },
+                    title=("Tiempo de Juego vs " "Satisfacción de la Comunidad"),
+                    labels={
+                        "playtime_hours": ("Tiempo de Juego Registrado (horas)"),
+                        "approval_rate": ("Aprobación de la Comunidad (%)"),
+                        "price_category": "Rango de Precio",
+                        "total_reviews": "Total de Reseñas",
+                    },
+                    template="plotly_dark",
+                    opacity=0.65,
+                    size_max=30,
                 )
 
-            elif correlacion_pearson <= -0.2:
+                fig_satisfaccion.update_xaxes(title="Tiempo de Juego Registrado (horas)")
 
-                interpretacion_pearson = (
-                    "Se observa una relación negativa "
-                    "débil/moderada entre tiempo de juego "
-                    "y aprobación."
+                fig_satisfaccion.update_layout(
+                    height=560,
+                    paper_bgcolor="#171d25",
+                    plot_bgcolor="#171d25",
                 )
+
+                st.plotly_chart(fig_satisfaccion, use_container_width=True)
+
+                # ====================================================
+                # 14. INFORMACIÓN SOBRE VALORES EXTREMOS
+                # ====================================================
+
+                st.caption(
+                    f"El análisis de correlación considera únicamente "
+                    f"los {juegos_con_tiempo:,} videojuegos con tiempo "
+                    f"de juego registrado ({porcentaje_con_tiempo:.1f}% "
+                    f"del total). El percentil 99 corresponde a "
+                    f"{percentil_99:,.1f} horas. Los "
+                    f"{juegos_valores_extremos:,} videojuegos que "
+                    f"superan este valor ({porcentaje_valores_extremos:.1f}% "
+                    f"de los juegos con tiempo registrado) se excluyen "
+                    f"únicamente de la visualización."
+                )
+
+                # ====================================================
+                # 15. COBERTURA DEL TIEMPO
+                # ====================================================
+
+                st.caption(
+                    f"De los {total_juegos_satisfaccion:,} videojuegos "
+                    f"analizados, {juegos_con_tiempo:,} "
+                    f"({porcentaje_con_tiempo:.1f}%) cuentan con tiempo "
+                    f"de juego registrado y {juegos_sin_tiempo:,} "
+                    f"({porcentaje_sin_tiempo:.1f}%) no presentan "
+                    f"tiempo registrado."
+                )
+
+                # ====================================================
+                # 16. SEGUNDO GRÁFICO
+                # NIVELES DE TIEMPO
+                # ====================================================
+
+                st.subheader(
+                    "¿Cómo se distribuyen los videojuegos "
+                    "según su nivel de tiempo de juego?"
+                )
+
+                st.write(
+                    "Los videojuegos con tiempo registrado se agrupan "
+                    "en diferentes niveles para identificar dónde se "
+                    "concentra la mayor cantidad de títulos y comparar "
+                    "su aprobación promedio."
+                )
+
+                # ====================================================
+                # 17. CREAR NIVELES DE TIEMPO
+                # ====================================================
+
+                df_niveles_tiempo = df_satisfaccion.loc[
+                    df_satisfaccion["playtime_hours"] > 0
+                ].copy()
+
+                df_niveles_tiempo["nivel_tiempo"] = pd.cut(
+                    df_niveles_tiempo["playtime_hours"],
+                    bins=[0, 1, 5, 20, 50, 100, float("inf")],
+                    labels=[
+                        "Muy bajo (0-1 h)",
+                        "Bajo (1-5 h)",
+                        "Medio (5-20 h)",
+                        "Alto (20-50 h)",
+                        "Muy alto (50-100 h)",
+                        "Extremo (100+ h)",
+                    ],
+                    include_lowest=True,
+                )
+
+                # ====================================================
+                # 18. AGRUPAR NIVELES
+                # ====================================================
+
+                niveles_agg = (
+                    df_niveles_tiempo.groupby("nivel_tiempo", observed=False)
+                    .agg(
+                        Videojuegos=("name", "count"),
+                        Aprobacion_Promedio=("approval_rate", "mean"),
+                        Tiempo_Promedio=("playtime_hours", "mean"),
+                    )
+                    .reset_index()
+                )
+
+                niveles_agg["Porcentaje"] = (
+                    niveles_agg["Videojuegos"] / juegos_con_tiempo * 100
+                )
+
+                niveles_agg["Etiqueta"] = niveles_agg.apply(
+                    lambda row: f"{int(row['Videojuegos']):,} "
+                    f"({row['Porcentaje']:.1f}%)",
+                    axis=1,
+                )
+
+                # ====================================================
+                # 19. GRÁFICO DE NIVELES
+                # ====================================================
+
+                fig_niveles = px.bar(
+                    niveles_agg,
+                    x="nivel_tiempo",
+                    y="Videojuegos",
+                    color="Aprobacion_Promedio",
+                    color_continuous_scale="Viridis",
+                    text="Etiqueta",
+                    hover_data={
+                        "Videojuegos": ":,",
+                        "Porcentaje": ":.1f",
+                        "Aprobacion_Promedio": ":.1f",
+                        "Tiempo_Promedio": ":.1f",
+                    },
+                    title=("Distribución de Videojuegos por " "Nivel de Tiempo de Juego"),
+                    labels={
+                        "nivel_tiempo": ("Nivel de Tiempo Registrado"),
+                        "Videojuegos": ("Cantidad de Videojuegos"),
+                        "Aprobacion_Promedio": ("Aprobación Promedio (%)"),
+                        "Porcentaje": "Porcentaje (%)",
+                        "Tiempo_Promedio": ("Tiempo Promedio (horas)"),
+                    },
+                    template="plotly_dark",
+                )
+
+                fig_niveles.update_traces(textposition="outside", cliponaxis=False)
+
+                fig_niveles.update_layout(
+                    height=520,
+                    paper_bgcolor="#171d25",
+                    plot_bgcolor="#171d25",
+                    coloraxis_colorbar=dict(title="Aprobación (%)"),
+                )
+
+                st.plotly_chart(fig_niveles, use_container_width=True)
+
+                # ====================================================
+                # 20. TABLA RESUMEN
+                # ====================================================
+
+                st.subheader("Resumen por nivel de tiempo de juego")
+
+                df_niveles_tabla = niveles_agg.copy()
+
+                df_niveles_tabla["Aprobación Promedio"] = df_niveles_tabla[
+                    "Aprobacion_Promedio"
+                ].map(lambda x: f"{x:.1f}%")
+
+                df_niveles_tabla["Tiempo Promedio"] = df_niveles_tabla[
+                    "Tiempo_Promedio"
+                ].map(lambda x: f"{x:.1f} h")
+
+                df_niveles_tabla["Porcentaje"] = df_niveles_tabla["Porcentaje"].map(
+                    lambda x: f"{x:.1f}%"
+                )
+
+                df_niveles_tabla = df_niveles_tabla.rename(
+                    columns={"nivel_tiempo": "Nivel de Tiempo"}
+                )[
+                    [
+                        "Nivel de Tiempo",
+                        "Videojuegos",
+                        "Porcentaje",
+                        "Aprobación Promedio",
+                        "Tiempo Promedio",
+                    ]
+                ]
+
+                st.dataframe(df_niveles_tabla, use_container_width=True, hide_index=True)
+
+                # ====================================================
+                # 21. HALLAZGO
+                # ====================================================
+
+                nivel_mayor = niveles_agg.loc[niveles_agg["Videojuegos"].idxmax()]
+
+                nivel_mayor_aprobacion = niveles_agg.loc[
+                    niveles_agg["Aprobacion_Promedio"].idxmax()
+                ]
+
+                st.info(
+                    f"**Hallazgo:** el nivel **"
+                    f"{nivel_mayor['nivel_tiempo']}** concentra "
+                    f"la mayor cantidad de videojuegos, con "
+                    f"({nivel_mayor['Porcentaje']:.1f}%)**. "
+                    f"El nivel con mayor aprobación promedio es "
+                    f"**{nivel_mayor_aprobacion['nivel_tiempo']}**, "
+                    f"con **"
+                    f"{nivel_mayor_aprobacion['Aprobacion_Promedio']:.1f}%**."
+                )
+
+                # ====================================================
+                # 22. INTERPRETACIÓN DE PEARSON
+                # ====================================================
+
+                if correlacion_pearson >= 0.5:
+
+                    interpretacion_pearson = (
+                        "Se observa una relación positiva "
+                        "moderada/fuerte: los videojuegos con mayor "
+                        "tiempo de juego tienden a presentar mayor "
+                        "aprobación."
+                    )
+
+                elif correlacion_pearson >= 0.2:
+
+                    interpretacion_pearson = (
+                        "Se observa una relación positiva "
+                        "débil/moderada: el tiempo de juego presenta "
+                        "cierta asociación con la aprobación, aunque "
+                        "no la explica por sí solo."
+                    )
+
+                elif correlacion_pearson <= -0.5:
+
+                    interpretacion_pearson = (
+                        "Se observa una relación negativa "
+                        "moderada/fuerte: un mayor tiempo de juego "
+                        "tiende a asociarse con menor aprobación."
+                    )
+
+                elif correlacion_pearson <= -0.2:
+
+                    interpretacion_pearson = (
+                        "Se observa una relación negativa "
+                        "débil/moderada entre tiempo de juego "
+                        "y aprobación."
+                    )
+
+                else:
+
+                    interpretacion_pearson = (
+                        "La relación lineal es débil: el tiempo "
+                        "de juego no presenta una asociación "
+                        "importante con la aprobación de la comunidad."
+                    )
+
+                st.info(f"**Hallazgo según Pearson:** {interpretacion_pearson}")
 
             else:
 
-                interpretacion_pearson = (
-                    "La relación lineal es débil: el tiempo "
-                    "de juego no presenta una asociación "
-                    "importante con la aprobación de la comunidad."
+                st.warning(
+                    "No hay suficientes videojuegos con tiempo "
+                    "de juego registrado para realizar el análisis."
                 )
-
-            st.info(f"**Hallazgo según Pearson:** " f"{interpretacion_pearson}")
 
         else:
 
             st.warning(
-                "No hay suficientes videojuegos con tiempo "
-                "de juego registrado para realizar el análisis."
+                "No hay suficientes datos válidos para comparar "
+                "satisfacción y tiempo de juego."
             )
-
-    else:
-
-        st.warning(
-            "No hay suficientes datos válidos para comparar "
-            "satisfacción y tiempo de juego."
-        )
 
     with tab5:
 
@@ -1007,117 +1007,53 @@ def main():
             st.markdown("### 1. Distribución por estrategia de precio")
             st.caption("¿Qué estrategia de precio domina el catálogo?")
 
-        orden_precios = [
-            "Gratis ($0)",
-            "Económico ($0.01 - $9.99)",
-            "Estándar ($10.00 - $29.99)",
-            "Premium ($30.00+)",
-        ]
+            orden_precios = [
+                "Gratis ($0)",
+                "Económico ($0.01 - $9.99)",
+                "Estándar ($10.00 - $29.99)",
+                "Premium ($30.00+)",
+            ]
 
-        df_precios = (
-            df_filtrado["price_category"]
-            .value_counts()
-            .reindex(orden_precios, fill_value=0)
-            .rename_axis("Estrategia de Precio")
-            .reset_index(name="Videojuegos")
-        )
+            df_precios = (
+                df_filtrado["price_category"]
+                .value_counts()
+                .reindex(orden_precios, fill_value=0)
+                .rename_axis("Estrategia de Precio")
+                .reset_index(name="Videojuegos")
+            )
 
-        total_precios = int(df_precios["Videojuegos"].sum())
+            total_precios = int(df_precios["Videojuegos"].sum())
 
-        if total_precios > 0:
-            df_precios["Porcentaje"] = df_precios["Videojuegos"] / total_precios * 100
+            if total_precios > 0:
+                df_precios["Porcentaje"] = df_precios["Videojuegos"] / total_precios * 100
 
-        df_precios["Etiqueta"] = df_precios.apply(
-            lambda row: (f"{int(row['Videojuegos']):,} " f"({row['Porcentaje']:.1f}%)"),
-            axis=1,
-        )
+            df_precios["Etiqueta"] = df_precios.apply(
+                lambda row: (f"{int(row['Videojuegos']):,} " f"({row['Porcentaje']:.1f}%)"),
+                axis=1,
+            )
 
-        fig_precios = px.bar(
-            df_precios,
-            x="Estrategia de Precio",
-            y="Videojuegos",
-            color="Estrategia de Precio",
-            color_discrete_map=PALETA_PRECIOS,
-            text="Etiqueta",
-            title="Distribución de Videojuegos por Estrategia de Precio",
-            labels={
-                "Estrategia de Precio": "Estrategia de Precio",
-                "Videojuegos": "Cantidad de Videojuegos",
-            },
-            template="plotly_dark",
-        )
-
-        fig_precios.update_traces(
-            textposition="outside",
-            cliponaxis=False,
-        )
-
-        fig_precios.update_layout(
-            showlegend=False,
-            height=500,
-            paper_bgcolor="#171d25",
-            plot_bgcolor="#171d25",
-            margin=dict(t=70, l=40, r=40, b=60),
-        )
-
-        st.plotly_chart(
-            fig_precios,
-            use_container_width=True,
-        )
-
-        categoria_mayor = df_precios.loc[
-            df_precios["Videojuegos"].idxmax(),
-            "Estrategia de Precio",
-        ]
-
-        porcentaje_mayor = df_precios.loc[
-            df_precios["Videojuegos"].idxmax(),
-            "Porcentaje",
-        ]
-
-        st.info(
-            f"**Hallazgo:** la estrategia **{categoria_mayor}** "
-            f"concentra la mayor proporción del catálogo filtrado, "
-            f"con **{porcentaje_mayor:.1f}%** de los videojuegos."
-        )
-
-        # ========================================================
-        # GRÁFICO 2: DISTRIBUCIÓN REAL DEL PRECIO
-        # ========================================================
-
-        st.markdown("### 2. Distribución real del precio")
-        st.caption("¿Cómo se distribuyen los precios de los videojuegos?")
-
-        df_hist_precio = (
-            df_filtrado[["name", "price_usd"]].dropna(subset=["price_usd"]).copy()
-        )
-
-        df_hist_precio["price_usd"] = pd.to_numeric(
-            df_hist_precio["price_usd"],
-            errors="coerce",
-        )
-
-        df_hist_precio = df_hist_precio[df_hist_precio["price_usd"] >= 0]
-
-        if not df_hist_precio.empty:
-            fig_hist_precio = px.histogram(
-                df_hist_precio,
-                x="price_usd",
-                nbins=40,
-                title="Distribución de Precios de los Videojuegos",
+            fig_precios = px.bar(
+                df_precios,
+                x="Estrategia de Precio",
+                y="Videojuegos",
+                color="Estrategia de Precio",
+                color_discrete_map=PALETA_PRECIOS,
+                text="Etiqueta",
+                title="Distribución de Videojuegos por Estrategia de Precio",
                 labels={
-                    "price_usd": "Precio (USD)",
-                    "count": "Cantidad de Videojuegos",
+                    "Estrategia de Precio": "Estrategia de Precio",
+                    "Videojuegos": "Cantidad de Videojuegos",
                 },
                 template="plotly_dark",
             )
 
-            fig_hist_precio.update_traces(
-                marker_line_width=0.5,
-                marker_line_color="#0e141d",
+            fig_precios.update_traces(
+                textposition="outside",
+                cliponaxis=False,
             )
 
-            fig_hist_precio.update_layout(
+            fig_precios.update_layout(
+                showlegend=False,
                 height=500,
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
@@ -1125,147 +1061,213 @@ def main():
             )
 
             st.plotly_chart(
-                fig_hist_precio,
+                fig_precios,
                 use_container_width=True,
             )
 
-            precio_promedio = df_hist_precio["price_usd"].mean()
-            precio_mediano = df_hist_precio["price_usd"].median()
-            precio_maximo = df_hist_precio["price_usd"].max()
-
-            col_p1, col_p2, col_p3 = st.columns(3)
-
-            col_p1.metric(
-                "Precio promedio",
-                f"${precio_promedio:.2f}",
-            )
-            col_p2.metric(
-                "Precio mediano",
-                f"${precio_mediano:.2f}",
-            )
-            col_p3.metric(
-                "Precio máximo",
-                f"${precio_maximo:,.2f}",
-            )
-
-        # ========================================================
-        # GRÁFICO 3: PRECIO VS APROBACIÓN
-        # ========================================================
-
-        st.markdown("### 3. Precio vs aprobación")
-        st.caption(
-            "¿Existe relación entre el precio de un videojuego "
-            "y la aprobación de los usuarios?"
-        )
-
-        df_scatter_precio = (
-            df_filtrado[
-                [
-                    "name",
-                    "price_usd",
-                    "approval_rate",
-                    "total_reviews",
-                    "Metacritic_score",
-                    "price_category",
-                ]
+            categoria_mayor = df_precios.loc[
+                df_precios["Videojuegos"].idxmax(),
+                "Estrategia de Precio",
             ]
-            .dropna(
-                subset=[
-                    "price_usd",
-                    "approval_rate",
-                ]
-            )
-            .copy()
-        )
 
-        df_scatter_precio["price_usd"] = pd.to_numeric(
-            df_scatter_precio["price_usd"],
-            errors="coerce",
-        )
-
-        df_scatter_precio["approval_rate"] = pd.to_numeric(
-            df_scatter_precio["approval_rate"],
-            errors="coerce",
-        )
-
-        df_scatter_precio = df_scatter_precio[
-            (df_scatter_precio["price_usd"] >= 0)
-            & (df_scatter_precio["approval_rate"] >= 0)
-            & (df_scatter_precio["approval_rate"] <= 100)
-        ]
-
-        if len(df_scatter_precio) > 1:
-            correlacion_precio_aprobacion = df_scatter_precio["price_usd"].corr(
-                df_scatter_precio["approval_rate"]
-            )
-
-            fig_precio_aprobacion = px.scatter(
-                df_scatter_precio,
-                x="price_usd",
-                y="approval_rate",
-                size="total_reviews",
-                color="price_category",
-                color_discrete_map=PALETA_PRECIOS,
-                hover_name="name",
-                hover_data={
-                    "price_usd": ":.2f",
-                    "approval_rate": ":.1f",
-                    "total_reviews": ":,",
-                    "Metacritic_score": True,
-                },
-                title="Precio vs Aprobación de la Comunidad",
-                labels={
-                    "price_usd": "Precio (USD)",
-                    "approval_rate": "Aprobación de la Comunidad (%)",
-                    "price_category": "Estrategia de Precio",
-                    "total_reviews": "Total de Reseñas",
-                    "Metacritic_score": "Metacritic",
-                },
-                template="plotly_dark",
-                opacity=0.70,
-            )
-
-            fig_precio_aprobacion.update_yaxes(
-                range=[0, 100],
-            )
-
-            fig_precio_aprobacion.update_layout(
-                height=560,
-                paper_bgcolor="#171d25",
-                plot_bgcolor="#171d25",
-                margin=dict(t=70, l=40, r=40, b=60),
-            )
-
-            st.plotly_chart(
-                fig_precio_aprobacion,
-                use_container_width=True,
-            )
-
-            if correlacion_precio_aprobacion >= 0.7:
-                interpretacion_precio = "existe una relación lineal positiva fuerte"
-            elif correlacion_precio_aprobacion >= 0.2:
-                interpretacion_precio = "existe una relación lineal positiva moderada"
-            elif correlacion_precio_aprobacion > -0.2:
-                interpretacion_precio = (
-                    "la relación lineal es débil o prácticamente inexistente"
-                )
-            elif correlacion_precio_aprobacion > -0.7:
-                interpretacion_precio = "existe una relación lineal negativa moderada"
-            else:
-                interpretacion_precio = "existe una relación lineal negativa fuerte"
+            porcentaje_mayor = df_precios.loc[
+                df_precios["Videojuegos"].idxmax(),
+                "Porcentaje",
+            ]
 
             st.info(
-                f"**Hallazgo:** el coeficiente de correlación de Pearson "
-                f"entre precio y aprobación es **"
-                f"{correlacion_precio_aprobacion:.2f}**. "
-                f"En este conjunto de datos, {interpretacion_precio} "
-                f"entre ambas variables."
+                f"**Hallazgo:** la estrategia **{categoria_mayor}** "
+                f"concentra la mayor proporción del catálogo filtrado, "
+                f"con **{porcentaje_mayor:.1f}%** de los videojuegos."
             )
+
+            # ========================================================
+            # GRÁFICO 2: DISTRIBUCIÓN REAL DEL PRECIO
+            # ========================================================
+
+            st.markdown("### 2. Distribución real del precio")
+            st.caption("¿Cómo se distribuyen los precios de los videojuegos?")
+
+            df_hist_precio = (
+                df_filtrado[["name", "price_usd"]].dropna(subset=["price_usd"]).copy()
+            )
+
+            df_hist_precio["price_usd"] = pd.to_numeric(
+                df_hist_precio["price_usd"],
+                errors="coerce",
+            )
+
+            df_hist_precio = df_hist_precio[df_hist_precio["price_usd"] >= 0]
+
+            if not df_hist_precio.empty:
+                fig_hist_precio = px.histogram(
+                    df_hist_precio,
+                    x="price_usd",
+                    nbins=40,
+                    title="Distribución de Precios de los Videojuegos",
+                    labels={
+                        "price_usd": "Precio (USD)",
+                        "count": "Cantidad de Videojuegos",
+                    },
+                    template="plotly_dark",
+                )
+
+                fig_hist_precio.update_traces(
+                    marker_line_width=0.5,
+                    marker_line_color="#0e141d",
+                )
+
+                fig_hist_precio.update_layout(
+                    height=500,
+                    paper_bgcolor="#171d25",
+                    plot_bgcolor="#171d25",
+                    margin=dict(t=70, l=40, r=40, b=60),
+                )
+
+                st.plotly_chart(
+                    fig_hist_precio,
+                    use_container_width=True,
+                )
+
+                precio_promedio = df_hist_precio["price_usd"].mean()
+                precio_mediano = df_hist_precio["price_usd"].median()
+                precio_maximo = df_hist_precio["price_usd"].max()
+
+                col_p1, col_p2, col_p3 = st.columns(3)
+
+                col_p1.metric(
+                    "Precio promedio",
+                    f"${precio_promedio:.2f}",
+                )
+                col_p2.metric(
+                    "Precio mediano",
+                    f"${precio_mediano:.2f}",
+                )
+                col_p3.metric(
+                    "Precio máximo",
+                    f"${precio_maximo:,.2f}",
+                )
+
+            # ========================================================
+            # GRÁFICO 3: PRECIO VS APROBACIÓN
+            # ========================================================
+
+            st.markdown("### 3. Precio vs aprobación")
+            st.caption(
+                "¿Existe relación entre el precio de un videojuego "
+                "y la aprobación de los usuarios?"
+            )
+
+            df_scatter_precio = (
+                df_filtrado[
+                    [
+                        "name",
+                        "price_usd",
+                        "approval_rate",
+                        "total_reviews",
+                        "Metacritic_score",
+                        "price_category",
+                    ]
+                ]
+                .dropna(
+                    subset=[
+                        "price_usd",
+                        "approval_rate",
+                    ]
+                )
+                .copy()
+            )
+
+            df_scatter_precio["price_usd"] = pd.to_numeric(
+                df_scatter_precio["price_usd"],
+                errors="coerce",
+            )
+
+            df_scatter_precio["approval_rate"] = pd.to_numeric(
+                df_scatter_precio["approval_rate"],
+                errors="coerce",
+            )
+
+            df_scatter_precio = df_scatter_precio[
+                (df_scatter_precio["price_usd"] >= 0)
+                & (df_scatter_precio["approval_rate"] >= 0)
+                & (df_scatter_precio["approval_rate"] <= 100)
+            ]
+
+            if len(df_scatter_precio) > 1:
+                correlacion_precio_aprobacion = df_scatter_precio["price_usd"].corr(
+                    df_scatter_precio["approval_rate"]
+                )
+
+                fig_precio_aprobacion = px.scatter(
+                    df_scatter_precio,
+                    x="price_usd",
+                    y="approval_rate",
+                    size="total_reviews",
+                    color="price_category",
+                    color_discrete_map=PALETA_PRECIOS,
+                    hover_name="name",
+                    hover_data={
+                        "price_usd": ":.2f",
+                        "approval_rate": ":.1f",
+                        "total_reviews": ":,",
+                        "Metacritic_score": True,
+                    },
+                    title="Precio vs Aprobación de la Comunidad",
+                    labels={
+                        "price_usd": "Precio (USD)",
+                        "approval_rate": "Aprobación de la Comunidad (%)",
+                        "price_category": "Estrategia de Precio",
+                        "total_reviews": "Total de Reseñas",
+                        "Metacritic_score": "Metacritic",
+                    },
+                    template="plotly_dark",
+                    opacity=0.70,
+                )
+
+                fig_precio_aprobacion.update_yaxes(
+                    range=[0, 100],
+                )
+
+                fig_precio_aprobacion.update_layout(
+                    height=560,
+                    paper_bgcolor="#171d25",
+                    plot_bgcolor="#171d25",
+                    margin=dict(t=70, l=40, r=40, b=60),
+                )
+
+                st.plotly_chart(
+                    fig_precio_aprobacion,
+                    use_container_width=True,
+                )
+
+                if correlacion_precio_aprobacion >= 0.7:
+                    interpretacion_precio = "existe una relación lineal positiva fuerte"
+                elif correlacion_precio_aprobacion >= 0.2:
+                    interpretacion_precio = "existe una relación lineal positiva moderada"
+                elif correlacion_precio_aprobacion > -0.2:
+                    interpretacion_precio = (
+                        "la relación lineal es débil o prácticamente inexistente"
+                    )
+                elif correlacion_precio_aprobacion > -0.7:
+                    interpretacion_precio = "existe una relación lineal negativa moderada"
+                else:
+                    interpretacion_precio = "existe una relación lineal negativa fuerte"
+
+                st.info(
+                    f"**Hallazgo:** el coeficiente de correlación de Pearson "
+                    f"entre precio y aprobación es **"
+                    f"{correlacion_precio_aprobacion:.2f}**. "
+                    f"En este conjunto de datos, {interpretacion_precio} "
+                    f"entre ambas variables."
+                )
+            else:
+                st.warning(
+                    "No hay suficientes datos válidos para analizar "
+                    "la relación entre precio y aprobación."
+                )
         else:
-            st.warning(
-                "No hay suficientes datos válidos para analizar "
-                "la relación entre precio y aprobación."
-            )
+            st.warning("No hay datos disponibles para los filtros seleccionados.")
 
     with tab6:
         st.subheader(
