@@ -983,6 +983,135 @@ def main():
             # 20. TABLA RESUMEN
             # ====================================================
 
+            # ====================================================
+
+            df_niveles_tiempo = df_satisfaccion.loc[
+                df_satisfaccion["playtime_hours"] > 0
+            ].copy()
+
+            df_niveles_tiempo["nivel_tiempo"] = pd.cut(
+                df_niveles_tiempo["playtime_hours"],
+                bins=[
+                    0,
+                    1,
+                    5,
+                    20,
+                    50,
+                    100,
+                    float("inf")
+                ],
+                labels=[
+                    "Muy bajo (0-1 h)",
+                    "Bajo (1-5 h)",
+                    "Medio (5-20 h)",
+                    "Alto (20-50 h)",
+                    "Muy alto (50-100 h)",
+                    "Extremo (100+ h)"
+                ],
+                include_lowest=True
+            )
+
+            # ====================================================
+            # 18. AGRUPAR NIVELES
+            # ====================================================
+
+            niveles_agg = (
+                df_niveles_tiempo
+                .groupby(
+                    "nivel_tiempo",
+                    observed=False
+                )
+                .agg(
+                    Videojuegos=("name", "count"),
+                    Aprobacion_Promedio=(
+                        "approval_rate",
+                        "mean"
+                    ),
+                    Tiempo_Promedio=(
+                        "playtime_hours",
+                        "mean"
+                    )
+                )
+                .reset_index()
+            )
+
+            niveles_agg["Porcentaje"] = (
+                niveles_agg["Videojuegos"]
+                / juegos_con_tiempo
+                * 100
+            )
+
+            niveles_agg["Etiqueta"] = (
+                niveles_agg.apply(
+                    lambda row:
+                    f"{int(row['Videojuegos']):,} "
+                    f"({row['Porcentaje']:.1f}%)",
+                    axis=1
+                )
+            )
+
+            # ====================================================
+            # 19. GRÁFICO DE NIVELES
+            # ====================================================
+
+            fig_niveles = px.bar(
+                niveles_agg,
+                x="nivel_tiempo",
+                y="Videojuegos",
+                color="Aprobacion_Promedio",
+                color_continuous_scale="Viridis",
+                text="Etiqueta",
+                hover_data={
+                    "Videojuegos": ":,",
+                    "Porcentaje": ":.1f",
+                    "Aprobacion_Promedio": ":.1f",
+                    "Tiempo_Promedio": ":.1f"
+                },
+                title=(
+                    "Distribución de Videojuegos por "
+                    "Nivel de Tiempo de Juego"
+                ),
+                labels={
+                    "nivel_tiempo": (
+                        "Nivel de Tiempo Registrado"
+                    ),
+                    "Videojuegos": (
+                        "Cantidad de Videojuegos"
+                    ),
+                    "Aprobacion_Promedio": (
+                        "Aprobación Promedio (%)"
+                    ),
+                    "Porcentaje": "Porcentaje (%)",
+                    "Tiempo_Promedio": (
+                        "Tiempo Promedio (horas)"
+                    )
+                },
+                template="plotly_dark"
+            )
+
+            fig_niveles.update_traces(
+                textposition="outside",
+                cliponaxis=False
+            )
+
+            fig_niveles.update_layout(
+                height=520,
+                paper_bgcolor="#171d25",
+                plot_bgcolor="#171d25",
+                coloraxis_colorbar=dict(
+                    title="Aprobación (%)"
+                )
+            )
+
+            st.plotly_chart(
+                fig_niveles,
+                use_container_width=True
+            )
+
+            # ====================================================
+            # 20. TABLA RESUMEN
+            # ====================================================
+
             st.subheader(
                 "Resumen por nivel de tiempo de juego"
             )
