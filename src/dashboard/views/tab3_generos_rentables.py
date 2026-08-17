@@ -36,15 +36,19 @@ def render(df_filtrado: pd.DataFrame) -> None:
             "Ingresos_Totales"
         ].apply(
             lambda x: (
-                f"${x / 1_000_000_000:.1f}B"
-                if x >= 1_000_000_000
-                else f"${x / 1_000_000:.1f}M"
+                "N/A"
+                if pd.isna(x)
+                else (
+                    f"${x / 1_000_000_000:.1f}B"
+                    if x >= 1_000_000_000
+                    else f"${x / 1_000_000:.1f}M"
+                )
             )
         )
 
         df_generos_ccu = generos_agg.copy()
         df_generos_ccu["Texto_CCU"] = df_generos_ccu["Peak_CCU_Promedio"].apply(
-            lambda x: f"{int(x):,}"
+            lambda x: f"{int(x):,}" if pd.notna(x) else "0"
         )
 
         col_g1, col_g2 = st.columns(2)
@@ -73,7 +77,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_generos_ingresos, use_container_width=True)
+            st.plotly_chart(fig_generos_ingresos, width="stretch")
 
         with col_g2:
             fig_generos_ccu = px.bar(
@@ -99,7 +103,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_generos_ccu, use_container_width=True)
+            st.plotly_chart(fig_generos_ccu, width="stretch")
 
         top10_nombres = generos_agg["Genres"].head(10).tolist()
         df_top10_box = df_filtrado[df_filtrado["Genres"].isin(top10_nombres)]
@@ -121,6 +125,6 @@ def render(df_filtrado: pd.DataFrame) -> None:
             paper_bgcolor="#171d25",
             plot_bgcolor="#171d25",
         )
-        st.plotly_chart(fig_box_precio, use_container_width=True)
+        st.plotly_chart(fig_box_precio, width="stretch")
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")

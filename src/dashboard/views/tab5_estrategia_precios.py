@@ -47,7 +47,11 @@ def render(df_filtrado: pd.DataFrame) -> None:
             df_precios["Porcentaje"] = df_precios["Videojuegos"] / total_precios * 100
 
         df_precios["Etiqueta"] = df_precios.apply(
-            lambda row: (f"{int(row['Videojuegos']):,} " f"({row['Porcentaje']:.1f}%)"),
+            lambda row: (
+                f"{int(row['Videojuegos']):,} ({row['Porcentaje']:.1f}%)"
+                if pd.notna(row.get("Videojuegos")) and pd.notna(row.get("Porcentaje"))
+                else f"{int(row.get('Videojuegos', 0)):,} (0.0%)"
+            ),
             axis=1,
         )
 
@@ -81,7 +85,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
 
         st.plotly_chart(
             fig_precios,
-            use_container_width=True,
+            width="stretch",
         )
 
         categoria_mayor = df_precios.loc[
@@ -145,7 +149,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
 
             st.plotly_chart(
                 fig_hist_precio,
-                use_container_width=True,
+                width="stretch",
             )
 
             precio_promedio = df_hist_precio["price_usd"].mean()
@@ -257,7 +261,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
 
             st.plotly_chart(
                 fig_precio_aprobacion,
-                use_container_width=True,
+                width="stretch",
             )
 
             if correlacion_precio_aprobacion >= 0.7:

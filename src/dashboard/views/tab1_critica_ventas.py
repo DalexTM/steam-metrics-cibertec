@@ -65,7 +65,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
         fig_scatter_ventas.update_layout(
             height=530, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
         )
-        st.plotly_chart(fig_scatter_ventas, use_container_width=True)
+        st.plotly_chart(fig_scatter_ventas, width="stretch")
 
         col_sub1, col_sub2 = st.columns(2)
 
@@ -77,9 +77,13 @@ def render(df_filtrado: pd.DataFrame) -> None:
             )
             top_ventas["Texto_Ventas"] = top_ventas["estimated_revenue_usd"].apply(
                 lambda x: (
-                    f"${x / 1_000_000_000:.1f}B"
-                    if x >= 1_000_000_000
-                    else f"${x / 1_000_000:.1f}M"
+                    "N/A"
+                    if pd.isna(x)
+                    else (
+                        f"${x / 1_000_000_000:.1f}B"
+                        if x >= 1_000_000_000
+                        else f"${x / 1_000_000:.1f}M"
+                    )
                 )
             )
 
@@ -107,13 +111,15 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_top_ventas, use_container_width=True)
+            st.plotly_chart(fig_top_ventas, width="stretch")
 
         with col_sub2:
             top_ccu = (
                 df_filtrado.sort_values(by="Peak_CCU", ascending=False).head(10).copy()
             )
-            top_ccu["Texto_CCU"] = top_ccu["Peak_CCU"].apply(lambda x: f"{int(x):,}")
+            top_ccu["Texto_CCU"] = top_ccu["Peak_CCU"].apply(
+                lambda x: f"{int(x):,}" if pd.notna(x) else "0"
+            )
 
             fig_top_ccu = px.bar(
                 top_ccu,
@@ -139,6 +145,6 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_top_ccu, use_container_width=True)
+            st.plotly_chart(fig_top_ccu, width="stretch")
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")
