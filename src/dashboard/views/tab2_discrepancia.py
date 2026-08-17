@@ -71,5 +71,27 @@ def render(df_filtrado: pd.DataFrame) -> None:
             height=400, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
         )
         st.plotly_chart(fig_pie_discrepancia, width="stretch")
+
+        # ====================================================
+        # HALLAZGO
+        # ====================================================
+        if not conteo_discrepancia.empty:
+            cat_mayor = conteo_discrepancia.sort_values(
+                "Cantidad", ascending=False
+            ).iloc[0]
+            pct_mayor = (cat_mayor["Cantidad"] / total_juegos) * 100
+
+            juego_infra = df_filtrado.sort_values(
+                "score_gap", ascending=False
+            ).iloc[0]
+            juego_sobre = df_filtrado.sort_values(
+                "score_gap", ascending=True
+            ).iloc[0]
+
+            st.info(
+                f"**Hallazgo:** la categoría predominante es **{cat_mayor['Categoria']}** con el **{pct_mayor:.1f}%** ({int(cat_mayor['Cantidad']):,} videojuegos). "
+                f"El juego más infravalorado por la crítica frente a la comunidad es **{juego_infra['name']}** (Brecha: **+{juego_infra['score_gap']:.1f} pts** | Aprobación: {juego_infra['approval_rate']:.1f}%), "
+                f"mientras que el más sobrevalorado es **{juego_sobre['name']}** (Brecha: **{juego_sobre['score_gap']:.1f} pts** | Metacritic: {juego_sobre['Metacritic_score']:.0f})."
+            )
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")

@@ -357,8 +357,8 @@ def render(df_filtrado: pd.DataFrame) -> None:
             st.info(
                 f"**Hallazgo:** el nivel **"
                 f"{nivel_mayor['nivel_tiempo']}** concentra "
-                f"la mayor cantidad de videojuegos, con "
-                f"({nivel_mayor['Porcentaje']:.1f}%)**. "
+                f"la mayor cantidad de videojuegos, con el **"
+                f"{nivel_mayor['Porcentaje']:.1f}%** de los títulos. "
                 f"El nivel con mayor aprobación promedio es "
                 f"**{nivel_mayor_aprobacion['nivel_tiempo']}**, "
                 f"con **"

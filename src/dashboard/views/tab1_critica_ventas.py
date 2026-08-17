@@ -147,5 +147,46 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 plot_bgcolor="#171d25",
             )
             st.plotly_chart(fig_top_ccu, width="stretch")
+
+        # ====================================================
+        # HALLAZGO (Ancho completo)
+        # ====================================================
+        if len(df_scatter) > 1:
+            corr_critica_ventas = df_scatter["Metacritic_score"].corr(
+                df_scatter["estimated_revenue_usd"]
+            )
+            top_juego_ventas = top_ventas.iloc[0]
+            top_juego_ccu = top_ccu.iloc[0]
+
+            if pd.notna(corr_critica_ventas):
+                if corr_critica_ventas >= 0.5:
+                    interp_corr = "una correlación positiva fuerte entre las calificaciones de la crítica y los ingresos generados"
+                elif corr_critica_ventas >= 0.2:
+                    interp_corr = "una correlación positiva moderada entre las calificaciones y los ingresos"
+                elif corr_critica_ventas > -0.2:
+                    interp_corr = "una correlación lineal débil entre el puntaje de Metacritic y los ingresos estimados (un alto puntaje crítico no garantiza por sí solo altos ingresos comerciales)"
+                else:
+                    interp_corr = "una correlación inversa entre las variables"
+            else:
+                interp_corr = "datos insuficientes para calcular la correlación lineal"
+
+            ingreso_juego_str = (
+                f"\\${top_juego_ventas['estimated_revenue_usd'] / 1_000_000_000:.1f}B"
+                if top_juego_ventas["estimated_revenue_usd"] >= 1_000_000_000
+                else f"\\${top_juego_ventas['estimated_revenue_usd'] / 1_000_000:,.1f}M"
+            )
+
+            meta_str = (
+                f"{top_juego_ventas['Metacritic_score']:.0f}"
+                if pd.notna(top_juego_ventas.get("Metacritic_score"))
+                else "N/A"
+            )
+
+            st.info(
+                f"**Hallazgo:** se observa {interp_corr} (r = **{corr_critica_ventas:.2f}**). "
+                f"El título líder en ingresos estimados es **{top_juego_ventas['name']}** "
+                f"({ingreso_juego_str} USD | Metacritic: {meta_str}), "
+                f"mientras que el líder en concurrencia es **{top_juego_ccu['name']}** con **{int(top_juego_ccu['Peak_CCU']):,} Peak CCU**."
+            )
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")
