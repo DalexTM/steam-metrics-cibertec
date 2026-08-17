@@ -41,6 +41,13 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 "estimated_revenue_milli": "Ingresos Estimados (Millones USD)",
                 "price_category": "Rango de Precio",
             },
+            category_orders={
+                "price_category": [
+                    "Premium ($30.00+)",
+                    "Estándar ($10.00 - $29.99)",
+                    "Económico ($0.01 - $9.99)",
+                ]
+            },
             template="plotly_dark",
             size_max=48,
             opacity=0.85,

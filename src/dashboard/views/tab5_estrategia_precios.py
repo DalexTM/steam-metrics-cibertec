@@ -244,6 +244,14 @@ def render(df_filtrado: pd.DataFrame) -> None:
                     "total_reviews": "Total de Reseñas",
                     "Metacritic_score": "Metacritic",
                 },
+                category_orders={
+                    "price_category": [
+                        "Premium ($30.00+)",
+                        "Estándar ($10.00 - $29.99)",
+                        "Económico ($0.01 - $9.99)",
+                        "Gratis ($0)",
+                    ]
+                },
                 template="plotly_dark",
                 opacity=0.70,
                 render_mode="webgl",
