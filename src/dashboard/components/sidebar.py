@@ -9,7 +9,15 @@ import streamlit as st
 def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
     st.sidebar.header("Filtros del Dataset")
 
-    generos_disponibles = sorted(df["Genres"].dropna().unique().tolist())
+    todos_generos = (
+        df["Genres"]
+        .dropna()
+        .astype(str)
+        .str.split(",")
+        .explode()
+        .str.strip()
+    )
+    generos_disponibles = sorted([g for g in todos_generos.unique() if g != ""])
     generos_seleccionados = st.sidebar.multiselect(
         "Filtrar por Género:",
         options=generos_disponibles,
@@ -69,7 +77,11 @@ def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
     df_filtrado = df.copy()
 
     if generos_seleccionados:
-        df_filtrado = df_filtrado.loc[df_filtrado["Genres"].isin(generos_seleccionados)]
+        sel_set = set(generos_seleccionados)
+        mask_genero = df_filtrado["Genres"].astype(str).apply(
+            lambda x: bool(set(g.strip() for g in x.split(",")) & sel_set)
+        )
+        df_filtrado = df_filtrado.loc[mask_genero]
 
     if categorias_precio_sel:
         df_filtrado = df_filtrado.loc[
