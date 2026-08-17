@@ -160,6 +160,14 @@ def render(df_filtrado: pd.DataFrame) -> None:
                     "price_category": "Rango de Precio",
                     "total_reviews": "Total de Reseñas",
                 },
+                category_orders={
+                    "price_category": [
+                        "Premium ($30.00+)",
+                        "Estándar ($10.00 - $29.99)",
+                        "Económico ($0.01 - $9.99)",
+                        "Gratis ($0)",
+                    ]
+                },
                 template="plotly_dark",
                 opacity=0.65,
                 size_max=30,
