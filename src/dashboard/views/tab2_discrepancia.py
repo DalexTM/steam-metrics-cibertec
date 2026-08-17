@@ -48,7 +48,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
         fig_discrepancia.update_layout(
             height=500, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
         )
-        st.plotly_chart(fig_discrepancia, use_container_width=True)
+        st.plotly_chart(fig_discrepancia, width="stretch")
 
         conteo_discrepancia = (
             df_filtrado["discrepancy_category"]
@@ -69,6 +69,6 @@ def render(df_filtrado: pd.DataFrame) -> None:
         fig_pie_discrepancia.update_layout(
             height=400, paper_bgcolor="#171d25", plot_bgcolor="#171d25"
         )
-        st.plotly_chart(fig_pie_discrepancia, use_container_width=True)
+        st.plotly_chart(fig_pie_discrepancia, width="stretch")
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")

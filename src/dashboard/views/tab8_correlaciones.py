@@ -63,6 +63,6 @@ def render(df_filtrado: pd.DataFrame) -> None:
             plot_bgcolor="#171d25",
             font=dict(color="#c6d4df"),
         )
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, width="stretch")
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")

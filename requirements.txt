@@ -20,3 +20,6 @@ scikit-learn>=1.9.0     # Modelos de aprendizaje automático, clustering y prepr
 # Conexión y Extracción de Datos
 kagglehub>=1.0.2        # Descarga programática de datasets desde la plataforma Kaggle
 requests>=2.34.2        # Consumo de APIs web y peticiones HTTP externas
+
+# Monitoreo de Recursos
+psutil>=7.2.2          # Monitoreo de uso de memoria RAM y recursos del sistema
