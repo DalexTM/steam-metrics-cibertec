@@ -163,6 +163,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 template="plotly_dark",
                 opacity=0.65,
                 size_max=30,
+                render_mode="webgl",
             )
 
             fig_satisfaccion.update_xaxes(title="Tiempo de Juego Registrado (horas)")
@@ -248,7 +249,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
             # ====================================================
 
             niveles_agg = (
-                df_niveles_tiempo.groupby("nivel_tiempo", observed=False)
+                df_niveles_tiempo.groupby("nivel_tiempo", observed=True)
                 .agg(
                     Videojuegos=("name", "count"),
                     Aprobacion_Promedio=("approval_rate", "mean"),
@@ -356,8 +357,8 @@ def render(df_filtrado: pd.DataFrame) -> None:
             st.info(
                 f"**Hallazgo:** el nivel **"
                 f"{nivel_mayor['nivel_tiempo']}** concentra "
-                f"la mayor cantidad de videojuegos, con "
-                f"({nivel_mayor['Porcentaje']:.1f}%)**. "
+                f"la mayor cantidad de videojuegos, con el **"
+                f"{nivel_mayor['Porcentaje']:.1f}%** de los títulos. "
                 f"El nivel con mayor aprobación promedio es "
                 f"**{nivel_mayor_aprobacion['nivel_tiempo']}**, "
                 f"con **"

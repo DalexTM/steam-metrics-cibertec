@@ -18,8 +18,16 @@ def render(df_filtrado: pd.DataFrame) -> None:
     total_juegos = len(df_filtrado)
 
     if total_juegos > 0:
+        cols_tab3 = [
+            "Genres",
+            "estimated_revenue_usd",
+            "Peak_CCU",
+            "appid",
+            "price_usd",
+        ]
         generos_agg = (
-            df_filtrado.groupby("Genres", observed=False)
+            df_filtrado[cols_tab3]
+            .groupby("Genres", observed=True)
             .agg(
                 Ingresos_Totales=("estimated_revenue_usd", "sum"),
                 Peak_CCU_Promedio=("Peak_CCU", "mean"),
@@ -126,5 +134,33 @@ def render(df_filtrado: pd.DataFrame) -> None:
             plot_bgcolor="#171d25",
         )
         st.plotly_chart(fig_box_precio, width="stretch")
+
+        # ====================================================
+        # HALLAZGO
+        # ====================================================
+        genero_top_ingresos = generos_agg.sort_values(
+            "Ingresos_Totales", ascending=False
+        ).iloc[0]
+        genero_top_ccu = generos_agg.sort_values(
+            "Peak_CCU_Promedio", ascending=False
+        ).iloc[0]
+
+        if genero_top_ingresos["Ingresos_Totales"] >= 1_000_000_000:
+            ingreso_str = (
+                f"\\${genero_top_ingresos['Ingresos_Totales'] / 1_000_000_000:.2f}B"
+            )
+        else:
+            ingreso_str = (
+                f"\\${genero_top_ingresos['Ingresos_Totales'] / 1_000_000:.1f}M"
+            )
+
+        precio_prom_str = f"\\${genero_top_ingresos['Precio_Promedio']:.2f}"
+
+        st.info(
+            f"**Hallazgo:** el género más rentable en ingresos totales es **{genero_top_ingresos['Genres']}** "
+            f"con **{ingreso_str} USD** (Precio promedio: {precio_prom_str} USD). "
+            f"Por su parte, el género con mayor concurrencia promedio de usuarios es **{genero_top_ccu['Genres']}** "
+            f"con **{int(genero_top_ccu['Peak_CCU_Promedio']):,} Peak CCU promedio**."
+        )
     else:
         st.warning("No hay datos disponibles para los filtros seleccionados.")

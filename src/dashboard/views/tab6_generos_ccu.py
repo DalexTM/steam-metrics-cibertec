@@ -16,7 +16,11 @@ def render(df_filtrado: pd.DataFrame) -> None:
         "retención longitudinal de usuarios."
     )
 
-    df_generos_tab6 = df_filtrado.dropna(subset=["Genres", "Peak_CCU"]).copy()
+    df_generos_tab6 = (
+        df_filtrado[["appid", "Genres", "Peak_CCU"]]
+        .dropna(subset=["Genres", "Peak_CCU"])
+        .copy()
+    )
     df_generos_tab6["Genres"] = df_generos_tab6["Genres"].astype(str).str.split(",")
     df_generos_tab6 = df_generos_tab6.explode("Genres")
     df_generos_tab6["Genres"] = df_generos_tab6["Genres"].str.strip()
@@ -24,7 +28,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
 
     if not df_generos_tab6.empty:
         generos_agg_tab6 = (
-            df_generos_tab6.groupby("Genres", observed=False)
+            df_generos_tab6.groupby("Genres", observed=True)
             .agg(
                 Peak_CCU_Promedio=("Peak_CCU", "mean"),
                 Videojuegos=("appid", "nunique"),
