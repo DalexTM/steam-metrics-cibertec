@@ -98,9 +98,9 @@ def ingesta_datos_steamspy():
                 pagina_actual += 1
 
                 logger.info(
-                    "Esperando 5 segundos para cumplir con la politica de SteamSpy..."
+                    "Esperando 2 segundos para cumplir con la politica de SteamSpy..."
                 )
-                time.sleep(5)
+                time.sleep(2)
 
             except Exception as e:
                 logger.error(f"Error inesperado en el proceso: {e}")
@@ -206,9 +206,6 @@ def ingestar_top100_steamcharts() -> str | None:
                         or str(precio).strip() == ""
                         or str(precio).strip().lower() == "none"
                     ):
-                        logger.info(
-                            f"[{i}/{len(appids)}] Omitiendo AppID {appid} - '{data_game.get('name')}' por precio nulo (sin precio fijado en Steam)."
-                        )
                         continue
 
                     rec_norm = {
@@ -221,9 +218,9 @@ def ingestar_top100_steamcharts() -> str | None:
                     }
                     registros.append(rec_norm)
                     logger.info(
-                        f"[{i}/{len(appids)}] AppID {appid} - '{data_game.get('name')}' descargado correctamente."
+                        f"[{i}/{len(appids)}] AppID {appid} - '{data_game.get('name')}' guardado exitosamente."
                     )
-            time.sleep(0.4)
+            time.sleep(1)
         except Exception as e:
             logger.warning(f"[{i}/{len(appids)}] Error al consultar AppID {appid}: {e}")
 
