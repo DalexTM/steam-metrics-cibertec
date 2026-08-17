@@ -1,5 +1,4 @@
-# type: ignore
-
+import gc
 import streamlit as st
 
 from src.dashboard.constants import aplicar_estilos, render_header
@@ -76,6 +75,8 @@ def main():
 
     with tab8:
         tab8_correlaciones.render(df_filtrado)
+
+    gc.collect()
 
 
 if __name__ == "__main__":

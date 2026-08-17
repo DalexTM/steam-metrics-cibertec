@@ -246,6 +246,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 },
                 template="plotly_dark",
                 opacity=0.70,
+                render_mode="webgl",
             )
 
             fig_precio_aprobacion.update_yaxes(
