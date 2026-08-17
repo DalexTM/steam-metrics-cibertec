@@ -45,6 +45,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
             size_max=48,
             opacity=0.85,
             log_y=True,
+            render_mode="webgl",
         )
         fig_scatter_ventas.update_traces(
             marker=dict(line=dict(width=0.6, color="#0e141d"))

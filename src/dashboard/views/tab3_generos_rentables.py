@@ -18,8 +18,10 @@ def render(df_filtrado: pd.DataFrame) -> None:
     total_juegos = len(df_filtrado)
 
     if total_juegos > 0:
+        cols_tab3 = ["Genres", "estimated_revenue_usd", "Peak_CCU", "appid", "price_usd"]
         generos_agg = (
-            df_filtrado.groupby("Genres", observed=False)
+            df_filtrado[cols_tab3]
+            .groupby("Genres", observed=True)
             .agg(
                 Ingresos_Totales=("estimated_revenue_usd", "sum"),
                 Peak_CCU_Promedio=("Peak_CCU", "mean"),

@@ -34,6 +34,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 "discrepancy_category": "Categoría de Discrepancia",
             },
             template="plotly_dark",
+            render_mode="webgl",
         )
 
         fig_discrepancia.add_trace(

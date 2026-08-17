@@ -163,6 +163,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 template="plotly_dark",
                 opacity=0.65,
                 size_max=30,
+                render_mode="webgl",
             )
 
             fig_satisfaccion.update_xaxes(title="Tiempo de Juego Registrado (horas)")
@@ -248,7 +249,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
             # ====================================================
 
             niveles_agg = (
-                df_niveles_tiempo.groupby("nivel_tiempo", observed=False)
+                df_niveles_tiempo.groupby("nivel_tiempo", observed=True)
                 .agg(
                     Videojuegos=("name", "count"),
                     Aprobacion_Promedio=("approval_rate", "mean"),
