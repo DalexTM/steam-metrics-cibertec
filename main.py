@@ -23,8 +23,45 @@ if not logger.handlers:
     logger.addHandler(sh)
 
 
+def ejecutar_pipeline_completo():
+    """Ejecuta todo el flujo de datos de manera secuencial desde la ingesta Raw hasta la capa Gold."""
+    logger.info("============================================================")
+    logger.info("INICIANDO EJECUCIÓN DEL PIPELINE COMPLETO: RAW -> GOLD")
+    logger.info("============================================================")
+
+    logger.info("\n--- [1/6] Ingesta Metacritic CSV ---")
+    try:
+        ingesta_datos_metacritic()
+    except Exception as err:
+        logger.error(f"Error en ingesta de Metacritic: {err}")
+        raise
+
+    logger.info("\n--- [2/6] Ingesta SteamSpy (Descarga Raw Avro) ---")
+    try:
+        ingesta_datos_steamspy()
+    except Exception as err:
+        logger.error(f"Error en ingesta de SteamSpy: {err}")
+        raise
+
+    logger.info("\n--- [3/6] Transformación SteamSpy Avro -> Bronze Parquet ---")
+    procesar_raw_a_parquet()
+
+    logger.info("\n--- [4/6] Transformación Metacritic CSV -> Bronze Parquet ---")
+    procesar_csv_a_parquet()
+
+    logger.info("\n--- [5/6] Pipeline de Calidad e Integración (Bronze -> Silver) ---")
+    procesar_bronze_a_silver()
+
+    logger.info("\n--- [6/6] Consolidación de Datamart (Silver -> Gold) ---")
+    procesar_silver_a_gold()
+
+    logger.info("\n============================================================")
+    logger.info("PIPELINE COMPLETO FINALIZADO CON ÉXITO (RAW -> GOLD)")
+    logger.info("============================================================")
+
+
 def mostrar_menu():
-    logger.info("Iniciando APP Steam Metrics.")
+    logger.info("Iniciando menú interactivo de Steam Metrics.")
     try:
         ingesta_datos_metacritic()
     except Exception as err:
@@ -39,6 +76,7 @@ def mostrar_menu():
         print("3. Transformar Metacritic CSV a Parquet")
         print("4. Integración y Limpieza (Bronze -> Silver)")
         print("5. Consolidación de Datamart (Silver -> Gold)")
+        print("6. Ejecutar Pipeline Completo (Raw -> Gold)")
         print("0. Salir")
         print("============================================")
 
@@ -91,6 +129,9 @@ def mostrar_menu():
                     "Pipeline finalizado: Procesamiento Silver a Gold completado con éxito."
                 )
 
+            elif opcion == "6":
+                ejecutar_pipeline_completo()
+
             elif opcion == "0":
                 logger.info("Saliendo del APP Steam Metrics.")
                 break
@@ -106,5 +147,30 @@ def mostrar_menu():
         input("\nPresione Enter para continuar...")
 
 
+def inicio():
+    print("\n============================================================")
+    print("           SISTEMA DE METRICAS STEAM - CIBERTEC             ")
+    print("============================================================")
+    print("¿Desea ejecutar todo el pipeline completo (Raw -> Gold)?")
+    print("  [S] Sí, ejecutar pipeline completo en secuencia")
+    print("  [N] No, abrir menú interactivo para ejecución manual")
+    print("  [0] Salir")
+    print("============================================================")
+
+    modo = input("Seleccione una opción [S/N/0]: ").strip().lower()
+
+    if modo in ["s", "si", "sí", "y", "yes", "1"]:
+        try:
+            ejecutar_pipeline_completo()
+        except Exception as e:
+            logger.error(f"Falla durante la ejecución del pipeline completo: {e}")
+        input("\nPresione Enter para continuar...")
+        mostrar_menu()
+    elif modo in ["0", "exit", "salir", "q"]:
+        logger.info("Saliendo del APP Steam Metrics.")
+    else:
+        mostrar_menu()
+
+
 if __name__ == "__main__":
-    mostrar_menu()
+    inicio()

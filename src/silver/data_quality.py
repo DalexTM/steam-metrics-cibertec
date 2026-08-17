@@ -314,23 +314,6 @@ def create_features(silver_df):
 
     logger.info("\n%s", price_counts)
 
-    price_counts = df["price_range"].value_counts().sort_index()
-
-    plt.figure(figsize=(8, 5))
-
-    plt.bar(price_counts.index.astype(str), price_counts.values)
-
-    plt.title("Distribución de juegos por rango de precio")
-    plt.xlabel("Rango de precio (USD)")
-    plt.ylabel("Cantidad de juegos")
-
-    # Mostrar la cantidad encima de cada barra
-    for i, v in enumerate(price_counts.values):
-        plt.text(i, v, str(v), ha="center", va="bottom")
-
-    plt.tight_layout()
-    plt.show()
-
     return df
 
 
