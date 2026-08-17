@@ -1,6 +1,8 @@
 # type: ignore
 
+import os
 import pandas as pd
+import psutil
 import streamlit as st
 
 
@@ -94,4 +96,13 @@ def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
     st.success(
         f"{len(df_filtrado):,} videojuegos filtrados correctamente desde la Capa Gold."
     )
+
+    try:
+        proceso = psutil.Process(os.getpid())
+        ram_mb = proceso.memory_info().rss / (1024 * 1024)
+        st.sidebar.divider()
+        st.sidebar.caption(f"💾 **RAM (App):** `{ram_mb:,.1f} MB`")
+    except Exception:
+        pass
+
     return df_filtrado

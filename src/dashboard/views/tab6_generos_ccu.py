@@ -44,7 +44,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
         if not generos_agg_tab6.empty:
             generos_agg_tab6["Etiqueta_CCU"] = generos_agg_tab6[
                 "Peak_CCU_Promedio"
-            ].apply(lambda x: f"{int(x):,}")
+            ].apply(lambda x: f"{int(x):,}" if pd.notna(x) else "0")
 
             fig_generos = px.bar(
                 generos_agg_tab6.sort_values("Peak_CCU_Promedio"),
@@ -72,7 +72,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 paper_bgcolor="#171d25",
                 plot_bgcolor="#171d25",
             )
-            st.plotly_chart(fig_generos, use_container_width=True)
+            st.plotly_chart(fig_generos, width="stretch")
 
             genero_lider = generos_agg_tab6.iloc[0]
             st.info(

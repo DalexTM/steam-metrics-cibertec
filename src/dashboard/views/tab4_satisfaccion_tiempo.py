@@ -173,7 +173,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 plot_bgcolor="#171d25",
             )
 
-            st.plotly_chart(fig_satisfaccion, use_container_width=True)
+            st.plotly_chart(fig_satisfaccion, width="stretch")
 
             # ====================================================
             # 14. INFORMACIÓN SOBRE VALORES EXTREMOS
@@ -262,8 +262,11 @@ def render(df_filtrado: pd.DataFrame) -> None:
             )
 
             niveles_agg["Etiqueta"] = niveles_agg.apply(
-                lambda row: f"{int(row['Videojuegos']):,} "
-                f"({row['Porcentaje']:.1f}%)",
+                lambda row: (
+                    f"{int(row['Videojuegos']):,} ({row['Porcentaje']:.1f}%)"
+                    if pd.notna(row["Videojuegos"]) and pd.notna(row["Porcentaje"])
+                    else "0 (0.0%)"
+                ),
                 axis=1,
             )
 
@@ -304,7 +307,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 coloraxis_colorbar=dict(title="Aprobación (%)"),
             )
 
-            st.plotly_chart(fig_niveles, use_container_width=True)
+            st.plotly_chart(fig_niveles, width="stretch")
 
             # ====================================================
             # 20. TABLA RESUMEN
@@ -338,7 +341,7 @@ def render(df_filtrado: pd.DataFrame) -> None:
                 ]
             ]
 
-            st.dataframe(df_niveles_tabla, use_container_width=True, hide_index=True)
+            st.dataframe(df_niveles_tabla, width="stretch", hide_index=True)
 
             # ====================================================
             # 21. HALLAZGO
